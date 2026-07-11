@@ -15,6 +15,7 @@ describe("parseServerEnv", () => {
     ).toEqual({
       DATABASE_URL: validDatabaseUrl,
       NODE_ENV: "test",
+      DEVELOPMENT_IDENTITY_ENABLED: false,
     });
   });
 
@@ -38,5 +39,39 @@ describe("parseServerEnv", () => {
     expect(() => parseServerEnv({ DATABASE_URL: validDatabaseUrl, NODE_ENV: "staging" })).toThrow(
       /NODE_ENV/,
     );
+  });
+
+  it("requires a development user key when development identity is enabled", () => {
+    expect(() =>
+      parseServerEnv({
+        DATABASE_URL: validDatabaseUrl,
+        NODE_ENV: "test",
+        DEVELOPMENT_IDENTITY_ENABLED: "true",
+      }),
+    ).toThrow(/DEVELOPMENT_USER_KEY/);
+  });
+
+  it("allows development identity in development and test environments", () => {
+    for (const NODE_ENV of ["development", "test"] as const) {
+      expect(
+        parseServerEnv({
+          DATABASE_URL: validDatabaseUrl,
+          NODE_ENV,
+          DEVELOPMENT_IDENTITY_ENABLED: "true",
+          DEVELOPMENT_USER_KEY: "test-development-user",
+        }),
+      ).toMatchObject({ NODE_ENV, DEVELOPMENT_IDENTITY_ENABLED: true });
+    }
+  });
+
+  it("rejects development identity in production", () => {
+    expect(() =>
+      parseServerEnv({
+        DATABASE_URL: validDatabaseUrl,
+        NODE_ENV: "production",
+        DEVELOPMENT_IDENTITY_ENABLED: "true",
+        DEVELOPMENT_USER_KEY: "must-not-authenticate-production",
+      }),
+    ).toThrow(/Development identity cannot be enabled in production/);
   });
 });

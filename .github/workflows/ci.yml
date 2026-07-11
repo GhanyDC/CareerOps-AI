@@ -14,6 +14,8 @@ jobs:
     timeout-minutes: 30
     env:
       DATABASE_URL: postgresql://careerops:careerops_ci@127.0.0.1:5432/careerops_ci?schema=public
+      DEVELOPMENT_IDENTITY_ENABLED: "true"
+      DEVELOPMENT_USER_KEY: ghanymede-ci-development
     services:
       postgres:
         image: postgres:17.10-alpine3.24
@@ -51,6 +53,9 @@ jobs:
       - name: Deploy database migrations
         run: npm run db:migrate:deploy
 
+      - name: Seed development identity and candidate evidence
+        run: npm run db:seed
+
       - name: Check formatting
         run: npm run format:check
 
@@ -68,6 +73,8 @@ jobs:
 
       - name: Build production application
         run: npm run build
+        env:
+          DEVELOPMENT_IDENTITY_ENABLED: "false"
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium

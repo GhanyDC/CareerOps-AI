@@ -19,7 +19,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run start -- --port 3100",
+    command: "npm run dev -- --hostname 127.0.0.1 --port 3100",
     url: `${baseURL}/api/health`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

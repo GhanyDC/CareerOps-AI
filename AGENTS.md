@@ -37,7 +37,19 @@ CareerOps may prepare, review, and track applications, but it must never automat
 - Use `npm run db:migrate:deploy` to apply committed migrations.
 - Do not use `prisma db push` as the normal project workflow.
 - Do not edit an already-applied migration; add a new migration.
-- The first real migration is planned for the candidate evidence vertical slice.
+- Preserve the candidate evidence migration and its database-level ownership, source, date, and claim constraints.
+
+## Candidate evidence rules
+
+- Resolve ownership through `getRequestContext()` before every product read or mutation. The current development identity is a temporary server-only seam, not a production authentication system.
+- Never accept `userId` from form data, URL parameters, query parameters, or request bodies.
+- Keep every repository query scoped by the trusted user ID. Cross-user records must behave as unavailable.
+- Candidate profiles are one-per-user. Experiences and projects are authoritative sources; evidence items must reference exactly one owned source.
+- Evidence claims are atomic facts. Verification changes must use the evidence transition use case and write audit history.
+- Claim approval is an explicit user action and requires linked, verified evidence. Prohibited claims must never be exported by later features.
+- Approved, prohibited, and archived claims are not directly editable. Use audited status transitions and preserve historical records.
+- Block experience or project deletion while evidence depends on it. Do not silently cascade evidence or claims from product workflows.
+- Candidate-specific facts belong only in the idempotent development seed, never in reusable components or business rules.
 
 ## Required checks
 
@@ -55,8 +67,10 @@ npm run test:e2e
 
 Integration tests require PostgreSQL. E2E tests require a production build and the installed Chromium browser.
 
-## Foundation increment scope
+## Current scope
 
-Product-domain database models, candidate evidence models, job scoring, application tracking, RAG/vector retrieval, authentication-provider integration, n8n runtime integration, job scraping, and autonomous agent workflows are deferred from the repository-foundation increment. They are possible later CareerOps capabilities and are not permanently prohibited.
+The candidate profile, experiences, projects, evidence bank, claims bank, development identity seam, and transition audit history are implemented in the current vertical slice.
+
+Job discovery and parsing, job scoring, application tracking, RAG/vector retrieval, authentication-provider integration, n8n runtime integration, job scraping, and autonomous agent workflows remain deferred. They are possible later CareerOps capabilities and are not permanently prohibited.
 
 Do not begin a deferred capability without a separately reviewed increment. Preserve unrelated user changes and never commit real secrets, generated Prisma output, build output, test reports, or local environment files.

@@ -1,6 +1,6 @@
 # CareerOps AI
 
-CareerOps is an evidence-grounded career operating system designed to work alongside ChatGPT Work. This repository currently contains the engineering foundation: a small Next.js modular monolith, PostgreSQL persistence through Prisma, validated server configuration, and a complete local and CI test harness.
+CareerOps is an evidence-grounded career operating system designed to work alongside ChatGPT Work. This repository contains a Next.js modular monolith and the first product vertical slice: authoritative candidate profiles, experiences, projects, atomic evidence, and controlled claims.
 
 ## Operating model
 
@@ -10,29 +10,25 @@ CareerOps is an evidence-grounded career operating system designed to work along
 - n8n may later orchestrate external workflows through authenticated CareerOps APIs.
 - The user reviews and approves all application content and manually submits every application.
 
-Automatic job-application submission is prohibited. CareerOps may prepare, review, and track applications, but it does not submit them.
+Automatic job-application submission is prohibited. Imported descriptions and AI-generated output are untrusted input and remain inert until validated.
 
-Imported job descriptions and AI-generated output are untrusted input. They must be validated at system boundaries and must never be treated as executable instructions.
-
-## Foundation architecture
-
-The repository is a single Next.js App Router application backed by PostgreSQL:
+## Architecture
 
 ```text
 Browser and reviewed imports
             |
             v
 Next.js modular monolith
-  app routes and UI
-  application modules (added by vertical slice)
-  server-only infrastructure
+  App Router pages and server actions
+  candidate evidence modules and use cases
+  server-only identity and Prisma infrastructure
             |
           Prisma
             |
         PostgreSQL
 ```
 
-Product logic belongs in modules and use cases, not in React components or route handlers. Prisma access is server-only. Future user-owned records must be scoped using trusted, server-derived identity.
+Product logic belongs in modules and use cases, not React components or route handlers. Prisma access is server-only. Every user-owned query is scoped using trusted, server-derived identity. See [candidate evidence architecture](docs/architecture/candidate-evidence.md).
 
 ## Prerequisites
 
@@ -40,135 +36,101 @@ Product logic belongs in modules and use cases, not in React components or route
 - npm 11 or later
 - Docker with Docker Compose
 
-The repository includes `.nvmrc`. With nvm installed:
-
-```bash
-nvm use
-```
+Use the pinned Node version with `nvm use`.
 
 ## Initial setup
-
-Install dependencies and create local configuration:
 
 ```powershell
 Copy-Item .env.example .env
 npm ci
 npm run db:generate
+docker compose up -d --wait postgres
+npm run db:migrate:deploy
+npm run db:seed
 ```
 
-The values in `.env.example` are local-only placeholders. Never commit a real `.env` file or place secrets in variables prefixed with `NEXT_PUBLIC_`.
+The `.env.example` values are local-only placeholders. Never commit `.env` or expose secrets through `NEXT_PUBLIC_*`.
 
-## PostgreSQL
+## Development identity
 
-Start the local PostgreSQL service:
+Authentication-provider integration remains deferred. Local development and CI resolve a fixed identity from `DEVELOPMENT_USER_KEY` on the server. The user ID is looked up from PostgreSQL and is never accepted from forms, URLs, or request bodies.
+
+`DEVELOPMENT_IDENTITY_ENABLED` must be explicitly enabled. Environment validation rejects it when `NODE_ENV=production`; this seam is not production authentication. A production provider will replace `getRequestContext()` without changing domain use cases.
+
+## PostgreSQL and Prisma
+
+Start or stop the localhost-only PostgreSQL 17 service without deleting its named volume:
 
 ```bash
 docker compose up -d --wait postgres
-```
-
-Check its status or stop it without deleting its data:
-
-```bash
 docker compose ps
 docker compose down
 ```
 
-The Compose service binds only to `127.0.0.1`. Its named volume persists development data between container restarts.
-
-Changing the bootstrap username, password, or database name does not update an already initialized volume. Recreating the volume deletes all local database data, so only use `docker compose down --volumes` when that loss is intentional.
-
-## Prisma
-
-The foundation schema intentionally contains no product models. The first real migration will be introduced with the candidate evidence domain.
+Schema and data commands:
 
 ```bash
 npm run db:generate
 npm run db:validate
 npm run db:migrate:dev -- --name descriptive_migration_name
 npm run db:migrate:deploy
+npm run db:seed
 npm run db:studio
 ```
 
-Use Prisma migrations for schema changes. `prisma db push` is not the project migration workflow.
+Use Prisma migrations, never `prisma db push`, for project schema changes. The development seed is idempotent and preserves edits by creating missing records without overwriting existing records. See [seed-data documentation](docs/seed-data.md).
 
-## Development
+## Candidate evidence concepts
 
-Start the application:
+- **Candidate profile:** one per user; optional facts, preferences, constraints, and goals.
+- **Experience and project:** authoritative sources owned by the profile user.
+- **Evidence item:** one atomic claim linked to exactly one owned experience or project.
+- **Evidence verification:** `Draft`, `Requires verification`, `Verified`, or `Rejected`.
+- **Evidence strength:** `Direct`, `Transferable`, `Supporting`, or `Weak`.
+- **Claim-bank item:** controlled wording marked `Draft`, `Requires verification`, `Approved`, `Prohibited`, or `Archived`.
+
+Only an explicit user action can approve a claim, and approval requires linked verified evidence. Prohibited claims remain visible in history and must never enter later export packages. Important evidence and claim transitions write compact audit entries containing only status-relevant values.
+
+Verified evidence is locked until verification is explicitly revoked. Revocation or rejection transactionally moves linked approved claims back to requires verification and clears their approval timestamp. Material Experience or Project changes are blocked while verified evidence depends on that source. Experience source notes remain editable because they are non-material reviewer metadata. Ordered list fields retain user-authored priority, so reordering is treated as a material change.
+
+## Deletion and archival behavior
+
+- Experience and project deletion is blocked while evidence depends on the source.
+- Evidence linked to claims is not silently deleted.
+- Approved, prohibited, and archived claims cannot be edited directly.
+- Claims are prohibited or archived through explicit, audited transitions rather than deleted.
+- Approval revocation is recorded when an approved claim becomes restricted, prohibited, or archived.
+
+## Development and verification
 
 ```bash
 npm run dev
-```
-
-Then open `http://localhost:3000`. The liveness endpoint is available at `http://localhost:3000/api/health`; it deliberately does not test or expose database details.
-
-## Quality checks
-
-```bash
 npm run format
 npm run format:check
 npm run lint
 npm run typecheck
+npm run test:unit
+npm run test:integration
+npm run build
+npm run test:e2e
 npm run verify
 ```
 
-`verify` runs the non-provisioning foundation gates in a sensible order. Integration tests still require PostgreSQL, and E2E tests require a production build.
+Integration tests require the healthy Compose database. Test users are isolated and removed after the candidate-evidence suite. The production build runs with development identity disabled. E2E then uses Chromium against the development server on dedicated port 3100 because the development identity is intentionally prohibited in a production runtime. E2E marks every created record with a unique run identifier and removes only records carrying that marker in a `finally` cleanup.
 
-## Tests
-
-Unit tests do not require a database:
-
-```bash
-npm run test:unit
-```
-
-Integration tests require the healthy Compose database and perform a read-only connectivity smoke test:
-
-```bash
-docker compose up -d --wait postgres
-npm run test:integration
-```
-
-End-to-end tests use Chromium and start the already-built production server:
-
-```bash
-npm run build
-npx playwright install chromium
-npm run test:e2e
-```
-
-## Production build
-
-```bash
-npm run build
-npm run start
-```
-
-Formatting, linting, type checking, and tests are separate gates; a successful Next.js build does not replace them.
-
-## Continuous integration
-
-GitHub Actions runs on pushes to `main` and on pull requests. CI installs dependencies reproducibly, starts a PostgreSQL service, validates Prisma, runs formatting, linting, type checking, unit and integration tests, creates a production build, and runs the Chromium E2E suite. A Playwright report is uploaded when E2E fails.
+GitHub Actions performs clean installation, migration deployment, seed, quality checks, unit/integration tests, production build, and the full Chromium evidence-to-approved-claim workflow.
 
 ## Troubleshooting
 
 - **Wrong Node version:** ensure `node --version` reports `v24.x`, then run `npm ci` again.
-- **The configured PostgreSQL port is occupied:** stop the conflicting local PostgreSQL instance or change `POSTGRES_PORT` and the port in `DATABASE_URL` together.
-- **Prisma client cannot be imported:** run `npm run db:generate`.
-- **Database authentication fails after editing `.env`:** the existing Docker volume still has its original bootstrap credentials. Restore the original values or intentionally recreate the local volume.
-- **E2E cannot start:** run `npm run build` before `npm run test:e2e` and confirm the dedicated E2E port 3100 is available.
+- **Configured PostgreSQL port occupied:** change `POSTGRES_PORT` and the port in `DATABASE_URL` together.
+- **Development identity missing:** run migrations and `npm run db:seed`, then verify the development identity environment values.
+- **Prisma client unavailable:** run `npm run db:generate`.
+- **Database authentication changed:** existing Docker volumes retain their bootstrap credentials. Recreate a local volume only when deleting its data is intentional.
+- **E2E cannot start:** run `npm run build`, confirm port 3100 is available, and ensure the local development identity is enabled and seeded.
 
 ## Deferred product phases
 
-This increment establishes the repository only. Authentication-provider integration, n8n runtime integration, scoring, tracking, RAG/vector retrieval, scraping, and agent workflows are deferred to later reviewed increments rather than rejected as permanent capabilities.
+This evidence system will later support job requirement matching, RAG retrieval, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages. Those features, authentication-provider integration, n8n runtime integration, job discovery/parsing, scoring, application tracking, scraping, and agent workflows remain deferred to separately reviewed increments.
 
-The next planned vertical slice is:
-
-```text
-Candidate Profile
-→ Experiences
-→ Projects
-→ Evidence Items
-→ Approved Claims Bank
-```
-
-That slice will introduce the first product-domain models and first real Prisma migration. It is intentionally not part of the repository foundation.
+Automatic job-application submission remains prohibited.
