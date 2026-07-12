@@ -8,7 +8,7 @@ import { initialActionState } from "@/modules/shared/action-state";
 import { DomainError } from "@/modules/shared/errors";
 
 const mocks = vi.hoisted(() => ({
-  getRequestContext: vi.fn(),
+  getMutationRequestContext: vi.fn(),
   transitionEvidenceStatus: vi.fn(),
   deleteEvidenceItem: vi.fn(),
   transitionClaimStatus: vi.fn(),
@@ -18,7 +18,9 @@ const mocks = vi.hoisted(() => ({
   revalidatePath: vi.fn(),
 }));
 
-vi.mock("@/server/request-context", () => ({ getRequestContext: mocks.getRequestContext }));
+vi.mock("@/server/request-context", () => ({
+  getMutationRequestContext: mocks.getMutationRequestContext,
+}));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/modules/evidence/use-cases", () => ({
@@ -53,9 +55,10 @@ function formData(targetStatus?: string) {
 describe("mutation action error boundaries", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getRequestContext.mockResolvedValue({
+    mocks.getMutationRequestContext.mockResolvedValue({
       userId: "trusted-user",
-      identityMode: "development",
+      sessionId: "trusted-session",
+      identityMode: "authenticated",
     });
   });
 

@@ -51,11 +51,17 @@ npm run db:seed
 
 The `.env.example` values are local-only placeholders. Never commit `.env` or expose secrets through `NEXT_PUBLIC_*`.
 
-## Development identity
+## Production authentication
 
-Authentication-provider integration remains deferred. Local development and CI resolve a fixed identity from `DEVELOPMENT_USER_KEY` on the server. The user ID is looked up from PostgreSQL and is never accepted from forms, URLs, or request bodies.
+CareerOps uses Better Auth 1.6.23 with Google OIDC and PostgreSQL database sessions. Google accounts map to the existing internal `User.id` through a unique provider-and-subject record. Email is metadata, not an identity key, and implicit same-email account linking is disabled.
 
-`DEVELOPMENT_IDENTITY_ENABLED` must be explicitly enabled. Environment validation rejects it when `NODE_ENV=production`; this seam is not production authentication. A production provider will replace `getRequestContext()` without changing domain use cases.
+Every protected Server Component and server action resolves the internal user from an HttpOnly session cookie on the server. Mutation actions additionally validate the exact request origin. Repositories and use cases remain scoped by the trusted internal user ID; forms, URLs, query parameters, headers, request bodies, and Client Components cannot choose a user ID.
+
+Provider access, refresh, and ID tokens are not retained. Authentication secrets and provider credentials are server-only and must never use `NEXT_PUBLIC_*`.
+
+The candidate seed remains local-development data. `DEVELOPMENT_USER_KEY` identifies that seed but is not an authentication bypass. To use the seeded data through Google, link it explicitly by stable provider subject with `npm run auth:link-development-user`; never infer the link from email. Identical reruns are idempotent and conflicting mappings fail closed. See [production authentication architecture](docs/architecture/production-authentication.md).
+
+`AUTH_TRUSTED_ORIGINS` is authoritative. Do not set `BETTER_AUTH_TRUSTED_ORIGINS`; CareerOps rejects that secondary Better Auth setting. See the [authentication environment reference](docs/operations/authentication-environment.md).
 
 ## PostgreSQL and Prisma
 
@@ -113,24 +119,31 @@ npm run test:unit
 npm run test:integration
 npm run build
 npm run test:e2e
+npm run test:e2e:production
 npm run verify
+npm run verify:release
 ```
 
-Integration tests require the healthy Compose database. Test users are isolated and removed after the candidate-evidence suite. The production build runs with development identity disabled. E2E then uses Chromium against the development server on dedicated port 3100 because the development identity is intentionally prohibited in a production runtime. E2E marks every created record with a unique run identifier and removes only records carrying that marker in a `finally` cleanup.
+Integration tests require the healthy Compose database. Test users are isolated and removed after each suite. E2E uses Chromium against the production build on dedicated port 3100. A separate test-only Better Auth instance creates database sessions and injects HttpOnly cookies into Playwright; it exposes no HTTP bypass and makes no live Google calls. Each test creates uniquely identified users and removes only those users and their owned test data.
 
 GitHub Actions performs clean installation, migration deployment, seed, quality checks, unit/integration tests, production build, and the full Chromium evidence-to-approved-claim workflow.
+
+`npm run verify` is the practical source/build suite and does not require a running test database or browser. `npm run verify:release` is the deterministic release gate: it deploys and checks migrations, verifies schema drift, runs unit and PostgreSQL integration tests, builds the production application, runs normal and production-semantics Playwright suites, and checks Git whitespace. PostgreSQL and installed Chromium are required.
+
+Automated tests do not contact Google. Complete the [manual Google OAuth smoke test](docs/operations/google-oauth-smoke-test.md) before merge.
 
 ## Troubleshooting
 
 - **Wrong Node version:** ensure `node --version` reports `v24.x`, then run `npm ci` again.
 - **Configured PostgreSQL port occupied:** change `POSTGRES_PORT` and the port in `DATABASE_URL` together.
-- **Development identity missing:** run migrations and `npm run db:seed`, then verify the development identity environment values.
+- **Authentication configuration missing:** copy the server-only authentication placeholders from `.env.example`, replace them, and verify the Google callback URL is `${BETTER_AUTH_URL}/api/auth/callback/google`.
+- **Seeded development user unavailable:** run `npm run db:seed`, then explicitly link the provider subject if that local data should be used through Google.
 - **Prisma client unavailable:** run `npm run db:generate`.
 - **Database authentication changed:** existing Docker volumes retain their bootstrap credentials. Recreate a local volume only when deleting its data is intentional.
-- **E2E cannot start:** run `npm run build`, confirm port 3100 is available, and ensure the local development identity is enabled and seeded.
+- **E2E cannot start:** run `npm run build`, confirm port 3100 is available, and ensure Chromium is installed. E2E does not require live Google credentials.
 
 ## Deferred product phases
 
-This evidence system will later support job requirement matching, RAG retrieval, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages. Those features, authentication-provider integration, n8n runtime integration, job discovery/parsing, scoring, application tracking, scraping, and agent workflows remain deferred to separately reviewed increments.
+This evidence system will later support job requirement matching, RAG retrieval, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages. Those features, additional authentication providers, n8n runtime integration, job discovery/parsing, scoring, application tracking, scraping, and agent workflows remain deferred to separately reviewed increments.
 
 Automatic job-application submission remains prohibited.

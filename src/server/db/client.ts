@@ -2,15 +2,17 @@ import "server-only";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 
-import { env } from "@/config/env.server";
+import { parseDatabaseEnv } from "@/config/env.schema";
 import { PrismaClient } from "@/generated/prisma/client";
 
+const databaseEnv = parseDatabaseEnv(process.env);
+
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+  const adapter = new PrismaPg({ connectionString: databaseEnv.DATABASE_URL });
 
   return new PrismaClient({
     adapter,
-    log: env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
+    log: databaseEnv.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 }
 
@@ -20,6 +22,6 @@ const globalForPrisma = globalThis as unknown as {
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-if (env.NODE_ENV !== "production") {
+if (databaseEnv.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }

@@ -41,7 +41,7 @@ CareerOps may prepare, review, and track applications, but it must never automat
 
 ## Candidate evidence rules
 
-- Resolve ownership through `getRequestContext()` before every product read or mutation. The current development identity is a temporary server-only seam, not a production authentication system.
+- Resolve ownership through the session-derived `getRequestContext()` before every product read and through `getMutationRequestContext()` before every mutation.
 - Never accept `userId` from form data, URL parameters, query parameters, or request bodies.
 - Keep every repository query scoped by the trusted user ID. Cross-user records must behave as unavailable.
 - Candidate profiles are one-per-user. Experiences and projects are authoritative sources; evidence items must reference exactly one owned source.
@@ -69,8 +69,8 @@ Integration tests require PostgreSQL. E2E tests require a production build and t
 
 ## Current scope
 
-The candidate profile, experiences, projects, evidence bank, claims bank, development identity seam, and transition audit history are implemented in the current vertical slice.
+The candidate profile, experiences, projects, evidence bank, claims bank, production Google authentication, tenant request context, authentication audit history, and evidence transition audit history are implemented in the current vertical slice.
 
-Job discovery and parsing, job scoring, application tracking, RAG/vector retrieval, authentication-provider integration, n8n runtime integration, job scraping, and autonomous agent workflows remain deferred. They are possible later CareerOps capabilities and are not permanently prohibited.
+Job discovery and parsing, job scoring, application tracking, RAG/vector retrieval, additional authentication providers, PostgreSQL RLS, n8n runtime integration, job scraping, and autonomous agent workflows remain deferred. They are possible later CareerOps capabilities and are not permanently prohibited.
 
 Do not begin a deferred capability without a separately reviewed increment. Preserve unrelated user changes and never commit real secrets, generated Prisma output, build output, test reports, or local environment files.

@@ -7,7 +7,7 @@ import { createProject, deleteProject, updateProject } from "./use-cases";
 import { executeServerMutation, toActionError } from "@/modules/shared/action-errors.server";
 import type { ActionState } from "@/modules/shared/action-state";
 import { readList, readString } from "@/modules/shared/validation";
-import { getRequestContext } from "@/server/request-context";
+import { getMutationRequestContext } from "@/server/request-context";
 
 function readProjectInput(formData: FormData) {
   return {
@@ -36,7 +36,7 @@ export async function createProjectAction(
 ): Promise<ActionState> {
   let projectId: string;
   try {
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     const project = await createProject(userId, readProjectInput(formData));
     projectId = project.id;
     revalidatePath("/");
@@ -54,7 +54,7 @@ export async function updateProjectAction(
   const id = readString(formData, "id");
   try {
     if (!id) throw new Error("Missing project identifier");
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     await updateProject(userId, id, readProjectInput(formData));
     revalidatePath("/");
     revalidatePath("/projects");
@@ -71,7 +71,7 @@ export async function deleteProjectAction(
 ): Promise<ActionState> {
   const id = readString(formData, "id");
   const state = await executeServerMutation("project.delete", async () => {
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     if (!id) throw new Error("Missing project identifier");
     await deleteProject(userId, id);
     revalidatePath("/");

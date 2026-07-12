@@ -6,7 +6,9 @@ Run the idempotent development seed with:
 npm run db:seed
 ```
 
-The seed uses the server-only `DEVELOPMENT_USER_KEY`. It creates missing records with stable IDs derived from that key and uses no-op updates, so rerunning it does not duplicate records or overwrite user edits.
+The seed requires `DEVELOPMENT_SEED_ENABLED=true`, is rejected in production, and uses the server-only `DEVELOPMENT_USER_KEY`. It creates missing records with stable IDs derived from that key and uses no-op updates, so rerunning it does not duplicate records or overwrite user edits.
+
+The key is not an authentication credential. The seeded user remains local-only unless it is explicitly linked to a Google provider subject with the guarded development-linking command. Email matching never transfers or links the seed data. Repeating the identical provider, subject, and seeded-user mapping succeeds without creating another account or audit; every conflicting subject, user, or email owner is rejected.
 
 ## Included facts
 

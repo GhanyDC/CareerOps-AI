@@ -6,6 +6,7 @@ import { ZodError } from "zod";
 
 import type { ActionState } from "./action-state";
 import { DomainError } from "./errors";
+import { isSessionRequiredError } from "@/server/auth/errors";
 
 type SafeErrorReport = Readonly<{
   category: "unexpected_server_error";
@@ -30,6 +31,14 @@ export function reportUnexpectedServerError(
 }
 
 export function toActionError(error: unknown, operation = "server_action"): ActionState {
+  if (isSessionRequiredError(error)) {
+    return {
+      status: "error",
+      code: "SESSION_REQUIRED",
+      message: "Your session expired. Sign in again.",
+    };
+  }
+
   if (error instanceof ZodError) {
     const flattened = error.flatten();
     return {

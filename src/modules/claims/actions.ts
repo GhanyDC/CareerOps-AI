@@ -7,7 +7,7 @@ import { createDraftClaim, transitionClaimStatus, updateDraftClaim } from "./use
 import { executeServerMutation, toActionError } from "@/modules/shared/action-errors.server";
 import type { ActionState } from "@/modules/shared/action-state";
 import { readCheckbox, readString } from "@/modules/shared/validation";
-import { getRequestContext } from "@/server/request-context";
+import { getMutationRequestContext } from "@/server/request-context";
 
 function readClaimInput(formData: FormData) {
   return {
@@ -27,7 +27,7 @@ export async function createClaimAction(
 ): Promise<ActionState> {
   let claimId: string;
   try {
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     const claim = await createDraftClaim(userId, readClaimInput(formData));
     claimId = claim.id;
     revalidatePath("/");
@@ -45,7 +45,7 @@ export async function updateClaimAction(
   const id = readString(formData, "id");
   try {
     if (!id) throw new Error("Missing claim identifier");
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     await updateDraftClaim(userId, id, readClaimInput(formData));
     revalidatePath("/");
     revalidatePath("/claims");
@@ -62,7 +62,7 @@ export async function transitionClaimAction(
 ): Promise<ActionState> {
   const id = readString(formData, "id");
   const state = await executeServerMutation("claim.transition", async () => {
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     if (!id) throw new Error("Missing claim identifier");
     await transitionClaimStatus(userId, id, {
       targetStatus: readString(formData, "targetStatus"),

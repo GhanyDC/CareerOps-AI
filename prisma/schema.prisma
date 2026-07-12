@@ -64,11 +64,37 @@ enum AuditAction {
   CLAIM_RETURNED_TO_DRAFT
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum AuthenticationAuditAction {
+  USER_CREATED_FROM_PROVIDER
+  SIGN_IN_SUCCEEDED
+  SIGN_OUT
+  PROVIDER_ACCOUNT_LINKED
+  PROVIDER_ACCOUNT_UNLINKED
+  SESSION_REVOKED
+  ALL_SESSIONS_REVOKED
+  USER_SUSPENDED
+  USER_REACTIVATED
+  USER_SOFT_DELETED
+  DEVELOPMENT_USER_LINKED
+}
+
 model User {
-  id             String   @id @default(cuid())
-  developmentKey String   @unique @db.VarChar(100)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                String     @id @default(cuid())
+  developmentKey    String?    @unique @db.VarChar(100)
+  authName           String?    @db.VarChar(160)
+  authEmail          String?    @unique @db.VarChar(320)
+  authEmailVerified  Boolean    @default(false)
+  authImage          String?    @db.VarChar(2048)
+  status             UserStatus @default(ACTIVE)
+  deletedAt          DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
   candidateProfile CandidateProfile?
   experiences      Experience[]
@@ -76,6 +102,74 @@ model User {
   evidenceItems    EvidenceItem[]
   claims           Claim[]
   auditLogs        AuditLog[]
+  authAccounts     AuthAccount[]
+  authSessions     AuthSession[]
+  authenticationAuditLogs AuthenticationAuditLog[]
+}
+
+model AuthAccount {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String    @db.VarChar(255)
+  providerId            String    @db.VarChar(80)
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique @db.VarChar(255)
+  expiresAt DateTime
+  ipAddress String?  @db.VarChar(64)
+  userAgent String?  @db.VarChar(512)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model AuthVerification {
+  id         String   @id @default(cuid())
+  identifier String   @db.VarChar(255)
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@index([expiresAt])
+}
+
+model AuthenticationAuditLog {
+  id            String                    @id @default(cuid())
+  userId        String
+  authAccountId String?
+  authSessionId String?
+  action        AuthenticationAuditAction
+  providerId    String?                   @db.VarChar(80)
+  reasonCode    String?                   @db.VarChar(80)
+  createdAt     DateTime                  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
 }
 
 model CandidateProfile {

@@ -6,9 +6,9 @@ The candidate evidence vertical slice is the authoritative source for facts that
 
 ## Request and ownership boundary
 
-Every page or server action resolves `getRequestContext()` before calling a use case. The current implementation looks up a fixed development identity key on the server. No form, URL, query string, or request body can choose a user ID.
+Every protected page resolves `getRequestContext()` and every server action resolves `getMutationRequestContext()` before calling a use case. The current implementation validates a PostgreSQL-backed Better Auth session, resolves the active internal `User`, and returns only the trusted internal user and session IDs. Mutation context also validates the exact request Origin and Host. No form, URL, query string, header, Client Component, or request body can choose a user ID.
 
-Authentication-provider integration will replace this request-context function later. Domain use cases already accept the trusted `userId`, so repositories and product rules do not depend on an authentication vendor.
+Google's stable provider subject maps through `AuthAccount` to the existing internal `User.id`. Domain use cases continue to accept only that trusted `userId`, so repositories and product rules do not depend on provider metadata.
 
 All repositories include the trusted user scope. Composite database foreign keys include `userId` for candidate-profile sources, evidence sources, and claim-to-evidence links. This provides defense in depth against cross-user relationships even if an application check regresses.
 
