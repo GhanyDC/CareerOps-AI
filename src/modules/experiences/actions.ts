@@ -7,7 +7,7 @@ import { createExperience, deleteExperience, updateExperience } from "./use-case
 import { executeServerMutation, toActionError } from "@/modules/shared/action-errors.server";
 import type { ActionState } from "@/modules/shared/action-state";
 import { readCheckbox, readList, readString } from "@/modules/shared/validation";
-import { getRequestContext } from "@/server/request-context";
+import { getMutationRequestContext } from "@/server/request-context";
 
 function readExperienceInput(formData: FormData) {
   return {
@@ -34,7 +34,7 @@ export async function createExperienceAction(
 ): Promise<ActionState> {
   let experienceId: string;
   try {
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     const experience = await createExperience(userId, readExperienceInput(formData));
     experienceId = experience.id;
     revalidatePath("/");
@@ -51,7 +51,7 @@ export async function updateExperienceAction(
 ): Promise<ActionState> {
   const id = readString(formData, "id");
   try {
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     if (!id) throw new Error("Missing experience identifier");
     await updateExperience(userId, id, readExperienceInput(formData));
     revalidatePath("/");
@@ -69,7 +69,7 @@ export async function deleteExperienceAction(
 ): Promise<ActionState> {
   const id = readString(formData, "id");
   const state = await executeServerMutation("experience.delete", async () => {
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     if (!id) throw new Error("Missing experience identifier");
     await deleteExperience(userId, id);
     revalidatePath("/");

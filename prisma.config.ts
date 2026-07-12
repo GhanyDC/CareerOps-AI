@@ -2,9 +2,9 @@ import "dotenv/config";
 
 import { defineConfig } from "prisma/config";
 
-import { parseServerEnv } from "./src/config/env.schema";
+import { parseDatabaseEnv } from "./src/config/env.schema";
 
-const env = parseServerEnv(process.env);
+const env = parseDatabaseEnv(process.env);
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

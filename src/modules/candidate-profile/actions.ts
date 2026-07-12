@@ -7,14 +7,14 @@ import { updateCandidateProfile } from "./use-cases";
 import { toActionError } from "@/modules/shared/action-errors.server";
 import type { ActionState } from "@/modules/shared/action-state";
 import { readList, readString } from "@/modules/shared/validation";
-import { getRequestContext } from "@/server/request-context";
+import { getMutationRequestContext } from "@/server/request-context";
 
 export async function saveCandidateProfileAction(
   _previousState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   try {
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     const nightShiftValue = readString(formData, "nightShiftAcceptance");
 
     await updateCandidateProfile(userId, {

@@ -12,7 +12,7 @@ import {
 import { executeServerMutation, toActionError } from "@/modules/shared/action-errors.server";
 import type { ActionState } from "@/modules/shared/action-state";
 import { readCheckbox, readList, readString } from "@/modules/shared/validation";
-import { getRequestContext } from "@/server/request-context";
+import { getMutationRequestContext } from "@/server/request-context";
 
 function readEvidenceInput(formData: FormData) {
   const sourceReference = readString(formData, "sourceReference") ?? "";
@@ -41,7 +41,7 @@ export async function createEvidenceAction(
 ): Promise<ActionState> {
   let evidenceId: string;
   try {
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     const evidence = await createEvidenceItem(userId, readEvidenceInput(formData));
     evidenceId = evidence.id;
     revalidatePath("/");
@@ -59,7 +59,7 @@ export async function updateEvidenceAction(
   const id = readString(formData, "id");
   try {
     if (!id) throw new Error("Missing evidence identifier");
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     await updateEvidenceItem(userId, id, readEvidenceInput(formData));
     revalidatePath("/");
     revalidatePath("/evidence");
@@ -76,7 +76,7 @@ export async function transitionEvidenceAction(
 ): Promise<ActionState> {
   const id = readString(formData, "id");
   const state = await executeServerMutation("evidence.transition", async () => {
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     if (!id) throw new Error("Missing evidence identifier");
     await transitionEvidenceStatus(userId, id, {
       targetStatus: readString(formData, "targetStatus"),
@@ -95,7 +95,7 @@ export async function deleteEvidenceAction(
 ): Promise<ActionState> {
   const id = readString(formData, "id");
   const state = await executeServerMutation("evidence.delete", async () => {
-    const { userId } = await getRequestContext();
+    const { userId } = await getMutationRequestContext();
     if (!id) throw new Error("Missing evidence identifier");
     await deleteEvidenceItem(userId, id);
     revalidatePath("/");
