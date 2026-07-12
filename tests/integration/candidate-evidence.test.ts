@@ -32,7 +32,7 @@ import {
   viewProject,
 } from "@/modules/projects/use-cases";
 import { PrismaClient } from "@/generated/prisma/client";
-import { parseServerEnv } from "@/config/env.schema";
+import { parseDatabaseEnv } from "@/config/env.schema";
 import { seedDevelopmentData } from "@/server/db/seed-data";
 
 const profileInput = {
@@ -125,7 +125,7 @@ describe("candidate evidence vertical slice", () => {
   const userBKey = `integration-b-${token}`;
   const seedKey = `integration-seed-${token}`;
   const failureKey = `integration-failure-${token}`;
-  const env = parseServerEnv(process.env);
+  const env = parseDatabaseEnv(process.env);
   const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
   const client = new PrismaClient({ adapter });
   let userAId: string;

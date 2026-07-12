@@ -2,13 +2,13 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { PrismaClient } from "../../src/generated/prisma/client";
-import { parseServerEnv } from "../../src/config/env.schema";
+import { parseDatabaseEnv } from "../../src/config/env.schema";
 
 let prisma: PrismaClient;
 
 describe("PostgreSQL connectivity", () => {
   beforeAll(() => {
-    const env = parseServerEnv(process.env);
+    const env = parseDatabaseEnv(process.env);
     const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
     prisma = new PrismaClient({ adapter });
   });

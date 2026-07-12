@@ -6,8 +6,21 @@ import {
   toActionError,
 } from "@/modules/shared/action-errors.server";
 import { DomainError } from "@/modules/shared/errors";
+import { UnauthenticatedError } from "@/server/auth/errors";
 
 describe("server action error reporting", () => {
+  it("returns a stable session-required response without logging", () => {
+    const logger = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    expect(toActionError(new UnauthenticatedError(), "evidence.update")).toEqual({
+      status: "error",
+      code: "SESSION_REQUIRED",
+      message: "Your session expired. Sign in again.",
+    });
+    expect(logger).not.toHaveBeenCalled();
+    logger.mockRestore();
+  });
+
   it("reports only safe operational metadata", () => {
     const report = vi.fn();
     const correlationId = reportUnexpectedServerError("evidence.update", report);
