@@ -517,6 +517,40 @@ legend {
   border-color: #e4c4c4;
 }
 
+.raw-content {
+  max-width: 100%;
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: #f7f9fa;
+  color: #22343d;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.preview-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: #fbfcfc;
+}
+
+.preview-card h3,
+details .raw-content {
+  margin-top: 0.8rem;
+}
+
+.discovery-filters {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+}
+
 .details-list,
 .audit-list {
   display: grid;
