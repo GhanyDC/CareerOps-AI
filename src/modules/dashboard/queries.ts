@@ -12,6 +12,7 @@ export async function getDashboardSummary(userId: string) {
     evidenceRequiringVerification,
     claimsRequiringVerification,
     prohibitedClaims,
+    inboxDiscoveries,
   ] = await prisma.$transaction([
     prisma.experience.count({ where: { userId } }),
     prisma.project.count({ where: { userId } }),
@@ -21,6 +22,7 @@ export async function getDashboardSummary(userId: string) {
     prisma.evidenceItem.count({ where: { userId, verificationStatus: "REQUIRES_VERIFICATION" } }),
     prisma.claim.count({ where: { userId, status: "REQUIRES_VERIFICATION" } }),
     prisma.claim.count({ where: { userId, status: "PROHIBITED" } }),
+    prisma.jobDiscovery.count({ where: { userId, status: "INBOX" } }),
   ]);
 
   return {
@@ -31,5 +33,6 @@ export async function getDashboardSummary(userId: string) {
     approvedClaims,
     requiresVerification: evidenceRequiringVerification + claimsRequiringVerification,
     prohibitedClaims,
+    inboxDiscoveries,
   };
 }

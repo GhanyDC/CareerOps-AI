@@ -48,6 +48,7 @@ enum ClaimStatus {
 enum AuditEntityType {
   EVIDENCE
   CLAIM
+  DISCOVERY_IMPORT_BATCH
 }
 
 enum AuditAction {
@@ -62,6 +63,27 @@ enum AuditAction {
   CLAIM_ARCHIVED
   CLAIM_APPROVAL_REVOKED
   CLAIM_RETURNED_TO_DRAFT
+  DISCOVERY_IMPORT_BATCH_PURGED
+}
+
+enum DiscoveryImportMethod {
+  MANUAL_ENTRY
+  PASTED_TEXT
+  STRUCTURED_JSON
+}
+
+enum JobDiscoveryStatus {
+  INBOX
+  REJECTED
+  ARCHIVED
+}
+
+enum DiscoveryProcessingEventType {
+  BATCH_CONFIRMED
+  DISCOVERY_IMPORTED
+  DISCOVERY_REJECTED
+  DISCOVERY_RESTORED
+  DISCOVERY_ARCHIVED
 }
 
 enum UserStatus {
@@ -105,6 +127,9 @@ model User {
   authAccounts     AuthAccount[]
   authSessions     AuthSession[]
   authenticationAuditLogs AuthenticationAuditLog[]
+  discoveryImportBatches    DiscoveryImportBatch[]
+  jobDiscoveries            JobDiscovery[]
+  discoveryProcessingEvents DiscoveryProcessingEvent[]
 }
 
 model AuthAccount {
@@ -282,7 +307,7 @@ model EvidenceItem {
   allowedForResume           Boolean            @default(false)
   allowedForCoverLetters     Boolean            @default(false)
   allowedForInterviews       Boolean            @default(false)
-  allowedForRecruiterMessages Boolean           @default(false)
+  allowedForRecruiterMessages Boolean            @default(false)
   sourceNotes                String?            @db.Text
   createdAt                  DateTime           @default(now())
   updatedAt                  DateTime           @updatedAt
@@ -336,4 +361,77 @@ model AuditLog {
 
   @@index([userId, entityType, entityId, createdAt])
   @@index([userId, createdAt])
+}
+
+model DiscoveryImportBatch {
+  id                String                @id @default(cuid())
+  userId            String
+  importMethod      DiscoveryImportMethod
+  producerLabel     String                @db.VarChar(160)
+  contractVersion   Int                   @default(1)
+  originalPayload   String                @db.Text
+  validationSummary Json
+  idempotencyKey    String                @db.Uuid
+  payloadHash       String                @db.Char(64)
+  confirmedAt       DateTime              @default(now())
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  user             User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discoveries      JobDiscovery[]
+  processingEvents DiscoveryProcessingEvent[]
+
+  @@unique([id, userId])
+  @@unique([userId, idempotencyKey])
+  @@index([userId, confirmedAt, id])
+}
+
+model JobDiscovery {
+  id                String             @id @default(cuid())
+  userId            String
+  batchId           String
+  status            JobDiscoveryStatus @default(INBOX)
+  sourceLabel       String?            @db.VarChar(160)
+  submittedUrl      String?            @db.VarChar(2048)
+  titleHint         String?            @db.VarChar(200)
+  companyHint       String?            @db.VarChar(200)
+  locationHint      String?            @db.VarChar(200)
+  discoveredAt      DateTime?
+  rawContent        String             @db.Text
+  validationSummary Json
+  version           Int                @default(1)
+  rejectedAt        DateTime?
+  archivedAt        DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  user             User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batch            DiscoveryImportBatch       @relation(fields: [batchId, userId], references: [id, userId], onDelete: Cascade)
+  processingEvents DiscoveryProcessingEvent[]
+
+  @@unique([id, userId])
+  @@unique([id, batchId, userId])
+  @@index([batchId, userId])
+  @@index([userId, createdAt, id])
+  @@index([userId, status, createdAt, id])
+  @@index([userId, sourceLabel, createdAt, id])
+}
+
+model DiscoveryProcessingEvent {
+  id             String                       @id @default(cuid())
+  userId         String
+  batchId        String
+  discoveryId    String?
+  eventType      DiscoveryProcessingEventType
+  previousStatus JobDiscoveryStatus?
+  newStatus      JobDiscoveryStatus?
+  safeMetadata   Json?
+  createdAt      DateTime                     @default(now())
+
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batch     DiscoveryImportBatch @relation(fields: [batchId, userId], references: [id, userId], onDelete: Cascade)
+  discovery JobDiscovery?        @relation(fields: [discoveryId, batchId, userId], references: [id, batchId, userId], onDelete: Cascade)
+
+  @@index([userId, batchId, createdAt])
+  @@index([userId, discoveryId, createdAt])
 }

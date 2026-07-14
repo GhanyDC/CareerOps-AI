@@ -1,6 +1,8 @@
+import type { SafeActionErrorCode } from "./errors";
+
 export type ActionState = Readonly<{
   status: "idle" | "error";
-  code?: "SESSION_REQUIRED";
+  code?: SafeActionErrorCode;
   message?: string;
   fieldErrors?: Record<string, string[]>;
 }>;
