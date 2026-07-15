@@ -2,6 +2,7 @@ import "server-only";
 
 import type { JobDiscovery, JobDiscoveryStatus, Prisma } from "@/generated/prisma/client";
 import { recordAudit } from "@/modules/audit/public.server";
+import { redactJobParsingForDiscoveryBatch } from "@/modules/job-parsing/public.server";
 import type { RequestContext } from "@/server/request-context";
 import { runSerializableTransaction } from "@/server/db/transaction";
 
@@ -334,12 +335,18 @@ export async function purgeDiscoveryImportBatch(
       tx: Prisma.TransactionClient,
       input: { id: string; userId: string },
     ) => PromiseLike<unknown>;
+    redactParsing?: (
+      tx: Prisma.TransactionClient,
+      userId: string,
+      batchId: string,
+    ) => PromiseLike<unknown>;
   } = {
     recordAudit: (tx, input) => recordAudit(tx, input),
     deleteBatch: (tx, input) =>
       tx.discoveryImportBatch.delete({
         where: { id_userId: input },
       }),
+    redactParsing: redactJobParsingForDiscoveryBatch,
   },
 ) {
   const { confirmation } = purgeConfirmationSchema.parse(untrustedInput);
@@ -355,6 +362,7 @@ export async function purgeDiscoveryImportBatch(
         "The privacy-purge confirmation phrase does not match.",
       );
     }
+    await dependencies.redactParsing?.(tx, userId, batch.id);
     await dependencies.recordAudit(tx, {
       userId,
       entityType: "DISCOVERY_IMPORT_BATCH",
