@@ -4,6 +4,11 @@ CareerOps is an evidence-grounded career operating system designed to work along
 
 The discovery foundation also accepts reviewed manual, pasted, and strict JSON v1 opportunity imports. It preserves confirmed raw content and provenance in a user-scoped Discovery Inbox without parsing, scoring, scraping, or treating a discovery as an authoritative Job. See [discovery import architecture](docs/architecture/discovery-import-inbox.md).
 
+The Job parsing slice creates deterministic, reviewable parse drafts from raw discoveries and
+requires explicit user confirmation before an authoritative Job exists. Confirmed Jobs retain
+versioned source and field provenance; reparsing applies only user-selected fields. See
+[Job parsing architecture](docs/architecture/job-parsing-authoritative-records.md).
+
 ## Operating model
 
 - ChatGPT Work discovers opportunities, performs contextual analysis, and drafts application materials.
@@ -146,6 +151,6 @@ Automated tests do not contact Google. Complete the [manual Google OAuth smoke t
 
 ## Deferred product phases
 
-This evidence system will later support job requirement matching, RAG retrieval, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages. Those features, additional authentication providers, n8n runtime integration, job parsing and normalization, scoring, application tracking, scraping, and agent workflows remain deferred to separately reviewed increments.
+This evidence system will later support job requirement matching, RAG retrieval, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages. Those features, additional authentication providers, n8n runtime integration, scoring, application tracking, scraping, and agent workflows remain deferred to separately reviewed increments.
 
-Automatic job-application submission remains prohibited. Job parsing, normalized authoritative Job records, scoring, matching, scraping, and application tracking remain deferred.
+Automatic job-application submission remains prohibited. Scoring, matching, scraping, and application tracking remain deferred.

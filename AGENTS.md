@@ -71,6 +71,10 @@ Integration tests require PostgreSQL. E2E tests require a production build and t
 
 The candidate profile, experiences, projects, evidence bank, claims bank, production Google authentication, tenant request context, authentication audit history, and evidence transition audit history are implemented in the current vertical slice.
 
-Job discovery and parsing, job scoring, application tracking, RAG/vector retrieval, additional authentication providers, PostgreSQL RLS, n8n runtime integration, job scraping, and autonomous agent workflows remain deferred. They are possible later CareerOps capabilities and are not permanently prohibited.
+Job discovery, deterministic parse drafts, explicit confirmation, authoritative Job records, and
+source provenance are implemented. Job scoring, application tracking, RAG/vector retrieval,
+additional authentication providers, PostgreSQL RLS, n8n runtime integration, job scraping, and
+autonomous agent workflows remain deferred. They are possible later CareerOps capabilities and are
+not permanently prohibited.
 
 Do not begin a deferred capability without a separately reviewed increment. Preserve unrelated user changes and never commit real secrets, generated Prisma output, build output, test reports, or local environment files.

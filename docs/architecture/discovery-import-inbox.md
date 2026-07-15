@@ -46,3 +46,9 @@ the exact typed phrase shown on the owned batch page. Purge transactionally writ
 `DISCOVERY_IMPORT_BATCH_PURGED` product audit, then removes the batch, discoveries, and processing
 events. The surviving audit contains only the batch identifier, user identifier, discovery count,
 reason code, action, and timestamp.
+
+When a discovery has confirmed Job provenance, the same transaction first removes unconfirmed
+parse drafts and converts confirmed parse drafts and Job sources into metadata-only privacy
+tombstones. Raw and corrected parse content is removed, while source identifiers, hashes, parser
+versions, confirmation timestamps, and safe events remain. The separately user-confirmed Job is not
+silently deleted; its fields remain explicitly editable.
