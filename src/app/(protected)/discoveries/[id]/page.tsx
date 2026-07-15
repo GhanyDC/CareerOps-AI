@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DiscoveryStatusActions } from "@/components/discovery-status-actions";
+import { CreateParseDraftForm } from "@/components/create-parse-draft-form";
 import { StatusBadge } from "@/components/status-badge";
 import { DiscoveryError } from "@/modules/discovery/errors";
 import { viewJobDiscovery } from "@/modules/discovery/use-cases";
@@ -44,6 +45,17 @@ export default async function DiscoveryDetailPage({
         status={discovery.status}
         version={discovery.version}
       />
+      {discovery.status === "INBOX" ? (
+        <section className="panel">
+          <p className="eyebrow">Structured review</p>
+          <h2>Create a non-authoritative parse draft</h2>
+          <p>
+            CareerOps copies only explicit hints or a strict structured JSON contract. You must
+            review and confirm every authoritative value.
+          </p>
+          <CreateParseDraftForm discoveryId={discovery.id} />
+        </section>
+      ) : null}
       <section className="panel">
         <h2>Provenance</h2>
         <dl className="details-list">

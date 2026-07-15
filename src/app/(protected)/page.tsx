@@ -23,6 +23,7 @@ export default async function Dashboard() {
     ["Requires verification", summary.requiresVerification, "/claims?status=REQUIRES_VERIFICATION"],
     ["Prohibited claims", summary.prohibitedClaims, "/claims?status=PROHIBITED"],
     ["Inbox discoveries", summary.inboxDiscoveries, "/discoveries"],
+    ["Active Jobs", summary.activeJobs, "/jobs"],
   ] as const;
 
   return (
