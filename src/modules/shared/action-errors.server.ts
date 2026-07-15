@@ -43,18 +43,24 @@ export function toActionError(error: unknown, operation = "server_action"): Acti
     const flattened = error.flatten();
     return {
       status: "error",
+      code: "INVALID_INPUT",
       message: "Review the highlighted values and try again.",
       fieldErrors: flattened.fieldErrors as Record<string, string[]>,
     };
   }
 
   if (error instanceof DomainError) {
-    return { status: "error", message: error.message };
+    return {
+      status: "error",
+      ...(error.code ? { code: error.code } : {}),
+      message: error.message,
+    };
   }
 
   const correlationId = reportUnexpectedServerError(operation);
   return {
     status: "error",
+    code: "UNEXPECTED_ERROR",
     message: `The request could not be completed safely. Reference: ${correlationId}.`,
   };
 }

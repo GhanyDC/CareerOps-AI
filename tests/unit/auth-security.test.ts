@@ -20,9 +20,17 @@ const productionEnv: ServerEnv = {
 };
 
 describe("authentication redirect policy", () => {
-  it.each(["/", "/candidate-profile", "/experiences/owned-id", "/evidence?status=VERIFIED"])(
-    "accepts protected relative return path %s",
-    (path) => expect(safeReturnPath(path)).toBe(path),
+  it.each([
+    "/",
+    "/candidate-profile",
+    "/experiences/owned-id",
+    "/evidence?status=VERIFIED",
+    "/discoveries",
+    "/discoveries/import",
+    "/discoveries/owned-id",
+    "/discoveries/batches/owned-id",
+  ])("accepts protected relative return path %s", (path) =>
+    expect(safeReturnPath(path)).toBe(path),
   );
 
   it.each([

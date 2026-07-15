@@ -1,5 +1,31 @@
+export type SafeActionErrorCode =
+  | "SESSION_REQUIRED"
+  | "INVALID_INPUT"
+  | "PAYLOAD_TOO_LARGE"
+  | "INVALID_URL"
+  | "UNSUPPORTED_CONTRACT_VERSION"
+  | "INVALID_PREVIEW_TOKEN"
+  | "PREVIEW_EXPIRED"
+  | "IDEMPOTENCY_CONFLICT"
+  | "DISCOVERY_NOT_FOUND"
+  | "BATCH_NOT_FOUND"
+  | "PARSE_DRAFT_NOT_FOUND"
+  | "JOB_NOT_FOUND"
+  | "INVALID_PARSE_DRAFT"
+  | "PARSE_ALREADY_CONFIRMED"
+  | "INVALID_JOB_TRANSITION"
+  | "SOURCE_PROVENANCE_CONFLICT"
+  | "INVALID_STATUS_TRANSITION"
+  | "VERSION_CONFLICT"
+  | "INVALID_PURGE_CONFIRMATION"
+  | "CONFLICT"
+  | "UNEXPECTED_ERROR";
+
 export class DomainError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly code?: SafeActionErrorCode,
+  ) {
     super(message);
     this.name = "DomainError";
   }

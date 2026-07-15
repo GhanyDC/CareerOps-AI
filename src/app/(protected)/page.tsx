@@ -22,6 +22,8 @@ export default async function Dashboard() {
     ["Approved claims", summary.approvedClaims, "/claims?status=APPROVED"],
     ["Requires verification", summary.requiresVerification, "/claims?status=REQUIRES_VERIFICATION"],
     ["Prohibited claims", summary.prohibitedClaims, "/claims?status=PROHIBITED"],
+    ["Inbox discoveries", summary.inboxDiscoveries, "/discoveries"],
+    ["Active Jobs", summary.activeJobs, "/jobs"],
   ] as const;
 
   return (

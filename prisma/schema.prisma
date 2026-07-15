@@ -48,6 +48,8 @@ enum ClaimStatus {
 enum AuditEntityType {
   EVIDENCE
   CLAIM
+  DISCOVERY_IMPORT_BATCH
+  JOB
 }
 
 enum AuditAction {
@@ -62,6 +64,102 @@ enum AuditAction {
   CLAIM_ARCHIVED
   CLAIM_APPROVAL_REVOKED
   CLAIM_RETURNED_TO_DRAFT
+  DISCOVERY_IMPORT_BATCH_PURGED
+  JOB_CREATED_FROM_DISCOVERY
+  JOB_UPDATED
+  JOB_UPDATED_FROM_PARSE
+  JOB_ARCHIVED
+  JOB_RESTORED
+  JOB_SOURCE_PRIVACY_REDACTED
+}
+
+enum DiscoveryImportMethod {
+  MANUAL_ENTRY
+  PASTED_TEXT
+  STRUCTURED_JSON
+}
+
+enum JobDiscoveryStatus {
+  INBOX
+  REJECTED
+  ARCHIVED
+}
+
+enum DiscoveryProcessingEventType {
+  BATCH_CONFIRMED
+  DISCOVERY_IMPORTED
+  DISCOVERY_REJECTED
+  DISCOVERY_RESTORED
+  DISCOVERY_ARCHIVED
+}
+
+enum JobStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum JobEmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  TEMPORARY
+  INTERNSHIP
+  APPRENTICESHIP
+  VOLUNTEER
+  OTHER
+}
+
+enum JobWorkplaceArrangement {
+  ON_SITE
+  HYBRID
+  REMOTE
+  FIELD_BASED
+  OTHER
+}
+
+enum JobExperienceLevel {
+  INTERNSHIP
+  ENTRY_LEVEL
+  MID_LEVEL
+  SENIOR
+  LEAD
+  MANAGER
+  DIRECTOR
+  EXECUTIVE
+  OTHER
+}
+
+enum JobSalaryPeriod {
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  YEAR
+  PROJECT
+  OTHER
+}
+
+enum JobParseDraftStatus {
+  READY_FOR_REVIEW
+  CONFIRMED
+  REJECTED
+  SUPERSEDED
+}
+
+enum JobSourcePurpose {
+  INITIAL_CONFIRMATION
+  REPARSE_MERGE
+}
+
+enum JobParsingEventType {
+  PARSE_DRAFT_CREATED
+  PARSE_DRAFT_CORRECTED
+  PARSE_DRAFT_REJECTED
+  PARSE_DRAFT_SUPERSEDED
+  PARSE_DRAFT_CONFIRMED
+  JOB_CREATED_FROM_DISCOVERY
+  JOB_UPDATED_FROM_PARSE
+  PARSE_SOURCE_PRIVACY_REDACTED
 }
 
 enum UserStatus {
@@ -87,24 +185,31 @@ enum AuthenticationAuditAction {
 model User {
   id                String     @id @default(cuid())
   developmentKey    String?    @unique @db.VarChar(100)
-  authName           String?    @db.VarChar(160)
-  authEmail          String?    @unique @db.VarChar(320)
-  authEmailVerified  Boolean    @default(false)
-  authImage          String?    @db.VarChar(2048)
-  status             UserStatus @default(ACTIVE)
-  deletedAt          DateTime?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  authName          String?    @db.VarChar(160)
+  authEmail         String?    @unique @db.VarChar(320)
+  authEmailVerified Boolean    @default(false)
+  authImage         String?    @db.VarChar(2048)
+  status            UserStatus @default(ACTIVE)
+  deletedAt         DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
-  candidateProfile CandidateProfile?
-  experiences      Experience[]
-  projects         Project[]
-  evidenceItems    EvidenceItem[]
-  claims           Claim[]
-  auditLogs        AuditLog[]
-  authAccounts     AuthAccount[]
-  authSessions     AuthSession[]
-  authenticationAuditLogs AuthenticationAuditLog[]
+  candidateProfile          CandidateProfile?
+  experiences               Experience[]
+  projects                  Project[]
+  evidenceItems             EvidenceItem[]
+  claims                    Claim[]
+  auditLogs                 AuditLog[]
+  authAccounts              AuthAccount[]
+  authSessions              AuthSession[]
+  authenticationAuditLogs   AuthenticationAuditLog[]
+  discoveryImportBatches    DiscoveryImportBatch[]
+  jobDiscoveries            JobDiscovery[]
+  discoveryProcessingEvents DiscoveryProcessingEvent[]
+  jobs                      Job[]
+  jobParseDrafts            JobParseDraft[]
+  jobSources                JobSource[]
+  jobParsingEvents          JobParsingEvent[]
 }
 
 model AuthAccount {
@@ -226,7 +331,7 @@ model Experience {
 
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   candidateProfile CandidateProfile @relation(fields: [candidateProfileId, userId], references: [id, userId], onDelete: Cascade)
-  evidenceItems    EvidenceItem[]    @relation("ExperienceEvidence")
+  evidenceItems    EvidenceItem[]   @relation("ExperienceEvidence")
 
   @@unique([id, userId])
   @@index([userId, experienceType])
@@ -260,7 +365,7 @@ model Project {
 
   user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   candidateProfile CandidateProfile @relation(fields: [candidateProfileId, userId], references: [id, userId], onDelete: Cascade)
-  evidenceItems    EvidenceItem[]    @relation("ProjectEvidence")
+  evidenceItems    EvidenceItem[]   @relation("ProjectEvidence")
 
   @@unique([id, userId])
   @@index([userId, verificationStatus])
@@ -268,24 +373,24 @@ model Project {
 }
 
 model EvidenceItem {
-  id                         String             @id @default(cuid())
-  userId                     String
-  sourceType                 EvidenceSourceType
-  sourceExperienceId         String?
-  sourceProjectId            String?
-  claim                      String             @db.VarChar(1000)
-  supportingContext          String?            @db.Text
-  skillsDemonstrated         String[]           @default([])
-  relevantRoleFamilies       String[]           @default([])
-  evidenceStrength           EvidenceStrength
-  verificationStatus         VerificationStatus @default(DRAFT)
-  allowedForResume           Boolean            @default(false)
-  allowedForCoverLetters     Boolean            @default(false)
-  allowedForInterviews       Boolean            @default(false)
-  allowedForRecruiterMessages Boolean           @default(false)
-  sourceNotes                String?            @db.Text
-  createdAt                  DateTime           @default(now())
-  updatedAt                  DateTime           @updatedAt
+  id                          String             @id @default(cuid())
+  userId                      String
+  sourceType                  EvidenceSourceType
+  sourceExperienceId          String?
+  sourceProjectId             String?
+  claim                       String             @db.VarChar(1000)
+  supportingContext           String?            @db.Text
+  skillsDemonstrated          String[]           @default([])
+  relevantRoleFamilies        String[]           @default([])
+  evidenceStrength            EvidenceStrength
+  verificationStatus          VerificationStatus @default(DRAFT)
+  allowedForResume            Boolean            @default(false)
+  allowedForCoverLetters      Boolean            @default(false)
+  allowedForInterviews        Boolean            @default(false)
+  allowedForRecruiterMessages Boolean            @default(false)
+  sourceNotes                 String?            @db.Text
+  createdAt                   DateTime           @default(now())
+  updatedAt                   DateTime           @updatedAt
 
   user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   sourceExperience Experience? @relation("ExperienceEvidence", fields: [sourceExperienceId, userId], references: [id, userId], onDelete: Restrict)
@@ -336,4 +441,217 @@ model AuditLog {
 
   @@index([userId, entityType, entityId, createdAt])
   @@index([userId, createdAt])
+}
+
+model DiscoveryImportBatch {
+  id                String                @id @default(cuid())
+  userId            String
+  importMethod      DiscoveryImportMethod
+  producerLabel     String                @db.VarChar(160)
+  contractVersion   Int                   @default(1)
+  originalPayload   String                @db.Text
+  validationSummary Json
+  idempotencyKey    String                @db.Uuid
+  payloadHash       String                @db.Char(64)
+  confirmedAt       DateTime              @default(now())
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  user             User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discoveries      JobDiscovery[]
+  processingEvents DiscoveryProcessingEvent[]
+
+  @@unique([id, userId])
+  @@unique([userId, idempotencyKey])
+  @@index([userId, confirmedAt, id])
+}
+
+model JobDiscovery {
+  id                String             @id @default(cuid())
+  userId            String
+  batchId           String
+  status            JobDiscoveryStatus @default(INBOX)
+  sourceLabel       String?            @db.VarChar(160)
+  submittedUrl      String?            @db.VarChar(2048)
+  titleHint         String?            @db.VarChar(200)
+  companyHint       String?            @db.VarChar(200)
+  locationHint      String?            @db.VarChar(200)
+  discoveredAt      DateTime?
+  rawContent        String             @db.Text
+  validationSummary Json
+  version           Int                @default(1)
+  rejectedAt        DateTime?
+  archivedAt        DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  user             User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batch            DiscoveryImportBatch       @relation(fields: [batchId, userId], references: [id, userId], onDelete: Cascade)
+  processingEvents DiscoveryProcessingEvent[]
+  parseDrafts      JobParseDraft[]            @relation("DraftDiscovery")
+  jobSources       JobSource[]                @relation("SourceDiscovery")
+
+  @@unique([id, userId])
+  @@unique([id, batchId, userId])
+  @@index([batchId, userId])
+  @@index([userId, createdAt, id])
+  @@index([userId, status, createdAt, id])
+  @@index([userId, sourceLabel, createdAt, id])
+}
+
+model DiscoveryProcessingEvent {
+  id             String                       @id @default(cuid())
+  userId         String
+  batchId        String
+  discoveryId    String?
+  eventType      DiscoveryProcessingEventType
+  previousStatus JobDiscoveryStatus?
+  newStatus      JobDiscoveryStatus?
+  safeMetadata   Json?
+  createdAt      DateTime                     @default(now())
+
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batch     DiscoveryImportBatch @relation(fields: [batchId, userId], references: [id, userId], onDelete: Cascade)
+  discovery JobDiscovery?        @relation(fields: [discoveryId, batchId, userId], references: [id, batchId, userId], onDelete: Cascade)
+
+  @@index([userId, batchId, createdAt])
+  @@index([userId, discoveryId, createdAt])
+}
+
+model Job {
+  id                      String                   @id @default(cuid())
+  userId                  String
+  title                   String                   @db.VarChar(200)
+  companyName             String?                  @db.VarChar(200)
+  employmentType          JobEmploymentType?
+  workplaceArrangement    JobWorkplaceArrangement?
+  experienceLevel         JobExperienceLevel?
+  countryCode             String?                  @db.VarChar(2)
+  region                  String?                  @db.VarChar(160)
+  city                    String?                  @db.VarChar(160)
+  locationLabel           String?                  @db.VarChar(300)
+  salaryMin               Decimal?                 @db.Decimal(14, 2)
+  salaryMax               Decimal?                 @db.Decimal(14, 2)
+  salaryCurrency          String?                  @db.VarChar(3)
+  salaryPeriod            JobSalaryPeriod?
+  postedAt                DateTime?                @db.Date
+  closesAt                DateTime?                @db.Date
+  sourceUrl               String?                  @db.VarChar(2048)
+  description             String?                  @db.Text
+  responsibilities        String[]                 @default([])
+  qualifications          String[]                 @default([])
+  preferredQualifications String[]                 @default([])
+  benefits                String[]                 @default([])
+  skills                  String[]                 @default([])
+  applicationInstructions String?                  @db.Text
+  contactDetails          String?                  @db.Text
+  notes                   String?                  @db.Text
+  fieldProvenance         Json
+  status                  JobStatus                @default(ACTIVE)
+  version                 Int                      @default(1)
+  confirmedAt             DateTime                 @default(now())
+  archivedAt              DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources       JobSource[]
+  reparseDrafts JobParseDraft[]   @relation("ReparseTarget")
+  parsingEvents JobParsingEvent[]
+
+  @@unique([id, userId])
+  @@index([userId, status, confirmedAt, id])
+  @@index([userId, employmentType, confirmedAt, id])
+  @@index([userId, workplaceArrangement, confirmedAt, id])
+}
+
+model JobParseDraft {
+  id                 String              @id @default(cuid())
+  userId             String
+  discoveryId        String?
+  batchId            String?
+  sourceDiscoveryRef String              @db.VarChar(100)
+  sourceBatchRef     String              @db.VarChar(100)
+  targetJobId        String?
+  baseJobVersion     Int?
+  parserVersion      String              @db.VarChar(64)
+  contractVersion    Int                 @default(1)
+  sourcePayloadHash  String              @db.Char(64)
+  parsedPayload      Json
+  validationSummary  Json
+  fieldProvenance    Json
+  status             JobParseDraftStatus @default(READY_FOR_REVIEW)
+  userCorrections    Json
+  version            Int                 @default(1)
+  confirmedAt        DateTime?
+  rejectedAt         DateTime?
+  supersededAt       DateTime?
+  contentPurgedAt    DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discovery JobDiscovery?     @relation("DraftDiscovery", fields: [discoveryId, batchId, userId], references: [id, batchId, userId], onDelete: Restrict)
+  targetJob Job?              @relation("ReparseTarget", fields: [targetJobId, userId], references: [id, userId], onDelete: Restrict)
+  source    JobSource?
+  events    JobParsingEvent[]
+
+  @@unique([id, userId])
+  @@unique([id, sourceDiscoveryRef, sourceBatchRef, userId])
+  @@index([userId, discoveryId, status])
+  @@index([userId, status, updatedAt, id])
+  @@index([userId, targetJobId, status])
+}
+
+model JobSource {
+  id                 String           @id @default(cuid())
+  userId             String
+  jobId              String
+  discoveryId        String?
+  batchId            String?
+  sourceDiscoveryRef String           @db.VarChar(100)
+  sourceBatchRef     String           @db.VarChar(100)
+  parseDraftId       String           @unique
+  purpose            JobSourcePurpose
+  sourcePayloadHash  String           @db.Char(64)
+  parserVersion      String           @db.VarChar(64)
+  contractVersion    Int
+  appliedFields      String[]         @default([])
+  confirmedByUserId  String
+  idempotencyKey     String           @db.Uuid
+  confirmationHash   String           @db.Char(64)
+  confirmedAt        DateTime         @default(now())
+  sourcePurgedAt     DateTime?
+  createdAt          DateTime         @default(now())
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job        Job           @relation(fields: [jobId, userId], references: [id, userId], onDelete: Cascade)
+  discovery  JobDiscovery? @relation("SourceDiscovery", fields: [discoveryId, batchId, userId], references: [id, batchId, userId], onDelete: Restrict)
+  parseDraft JobParseDraft @relation(fields: [parseDraftId, sourceDiscoveryRef, sourceBatchRef, userId], references: [id, sourceDiscoveryRef, sourceBatchRef, userId], onDelete: Restrict)
+
+  @@unique([id, userId])
+  @@unique([userId, idempotencyKey])
+  @@unique([parseDraftId, sourceDiscoveryRef, sourceBatchRef, userId])
+  @@index([userId, jobId, confirmedAt])
+  @@index([userId, discoveryId, confirmedAt])
+}
+
+model JobParsingEvent {
+  id             String               @id @default(cuid())
+  userId         String
+  parseDraftId   String
+  jobId          String?
+  eventType      JobParsingEventType
+  previousStatus JobParseDraftStatus?
+  newStatus      JobParseDraftStatus?
+  safeMetadata   Json
+  createdAt      DateTime             @default(now())
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parseDraft JobParseDraft @relation(fields: [parseDraftId, userId], references: [id, userId], onDelete: Cascade)
+  job        Job?          @relation(fields: [jobId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@index([userId, parseDraftId, createdAt])
+  @@index([userId, jobId, createdAt])
+  @@index([userId, eventType, createdAt])
 }

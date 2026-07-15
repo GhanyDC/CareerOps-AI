@@ -1,5 +1,5 @@
 const allowedProtectedPath =
-  /^\/(?:$|candidate-profile(?:\/.*)?$|experiences(?:\/.*)?$|projects(?:\/.*)?$|evidence(?:\/.*)?$|claims(?:\/.*)?$)/;
+  /^\/(?:$|candidate-profile(?:\/.*)?$|experiences(?:\/.*)?$|projects(?:\/.*)?$|evidence(?:\/.*)?$|claims(?:\/.*)?$|discoveries(?:\/.*)?$)/;
 
 export function safeReturnPath(value: string | null | undefined, fallback = "/") {
   if (!value) return fallback;
