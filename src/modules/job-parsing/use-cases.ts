@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 
 import type { Prisma } from "@/generated/prisma/client";
 import { recordAudit } from "@/modules/audit/public.server";
+import { refreshDuplicateStateForJob } from "@/modules/job-duplicates/public.server";
 import { findOwnedDiscoveryForParsing } from "@/modules/discovery/public.server";
 import {
   JOB_CONTRACT_VERSION,
@@ -406,6 +407,7 @@ export async function confirmJobParseDraft(userId: string, id: string, untrusted
           confirmationHash: hash,
         },
       });
+      await refreshDuplicateStateForJob(tx, userId, job.id);
       await tx.jobParsingEvent.createMany({
         data: [
           {
