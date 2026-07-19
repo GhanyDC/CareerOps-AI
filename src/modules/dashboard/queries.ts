@@ -14,6 +14,7 @@ export async function getDashboardSummary(userId: string) {
     prohibitedClaims,
     inboxDiscoveries,
     activeJobs,
+    pendingDuplicateReviews,
   ] = await prisma.$transaction([
     prisma.experience.count({ where: { userId } }),
     prisma.project.count({ where: { userId } }),
@@ -25,6 +26,12 @@ export async function getDashboardSummary(userId: string) {
     prisma.claim.count({ where: { userId, status: "PROHIBITED" } }),
     prisma.jobDiscovery.count({ where: { userId, status: "INBOX" } }),
     prisma.job.count({ where: { userId, status: "ACTIVE" } }),
+    prisma.jobDuplicateCandidate.count({
+      where: {
+        userId,
+        OR: [{ activeCandidate: true, decision: null }, { decisionNeedsReview: true }],
+      },
+    }),
   ]);
 
   return {
@@ -37,5 +44,6 @@ export async function getDashboardSummary(userId: string) {
     prohibitedClaims,
     inboxDiscoveries,
     activeJobs,
+    pendingDuplicateReviews,
   };
 }

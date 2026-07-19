@@ -45,7 +45,26 @@ export function listJobRecords(userId: string, filters: JobListFilters = {}) {
   }
   return prisma.job.findMany({
     where,
-    include: { _count: { select: { sources: true } } },
+    include: {
+      _count: { select: { sources: true } },
+      duplicateCandidatesAsA: {
+        where: {
+          OR: [{ activeCandidate: true, decision: null }, { decisionNeedsReview: true }],
+        },
+        select: { id: true },
+        take: 1,
+      },
+      duplicateCandidatesAsB: {
+        where: {
+          OR: [{ activeCandidate: true, decision: null }, { decisionNeedsReview: true }],
+        },
+        select: { id: true },
+        take: 1,
+      },
+      duplicateGroupMembership: {
+        include: { group: { select: { id: true, primaryJobId: true } } },
+      },
+    },
     orderBy: [{ confirmedAt: direction }, { id: direction }],
     take: Math.min(filters.pageSize ?? 25, 50) + 1,
   });
@@ -63,6 +82,17 @@ export function getJobRecord(userId: string, id: string) {
         orderBy: { confirmedAt: "desc" },
       },
       parsingEvents: { orderBy: { createdAt: "asc" } },
+      duplicateCandidatesAsA: {
+        select: { id: true, decision: true, decisionNeedsReview: true },
+        take: 1,
+      },
+      duplicateCandidatesAsB: {
+        select: { id: true, decision: true, decisionNeedsReview: true },
+        take: 1,
+      },
+      duplicateGroupMembership: {
+        include: { group: { select: { id: true, primaryJobId: true } } },
+      },
     },
   });
 }

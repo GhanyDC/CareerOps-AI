@@ -49,6 +49,25 @@ export default async function JobDetailPage({
       ) : null}
       {query.saved ? <div className="notice success">Authoritative Job updated.</div> : null}
       {query.transitioned ? <div className="notice success">Job status updated.</div> : null}
+      {job.duplicateGroupMembership ? (
+        <div className="notice">
+          This Job is{" "}
+          {job.duplicateGroupMembership.group.primaryJobId === job.id
+            ? "the primary record in"
+            : "a member of"}{" "}
+          a confirmed duplicate group.{" "}
+          <Link href={`/jobs/duplicate-groups/${job.duplicateGroupMembership.group.id}`}>
+            Review duplicate group
+          </Link>
+          .
+        </div>
+      ) : null}
+      {job.duplicateCandidatesAsA.length + job.duplicateCandidatesAsB.length > 0 ? (
+        <div className="notice">
+          Duplicate review history is available.{" "}
+          <Link href="/jobs/duplicates">Open duplicate queue</Link>.
+        </div>
+      ) : null}
       <JobStatusActions id={job.id} status={job.status} version={job.version} />
       <section className="panel">
         <h2>Confirmation summary</h2>
