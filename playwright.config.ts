@@ -6,7 +6,9 @@ export default defineConfig({
   testDir: "./tests/e2e",
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Database-backed workflows share one application server and transaction adapter.
+  // Serial workers keep local release verification deterministic, matching CI.
+  workers: 1,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,
