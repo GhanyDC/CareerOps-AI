@@ -9,6 +9,11 @@ requires explicit user confirmation before an authoritative Job exists. Confirme
 versioned source and field provenance; reparsing applies only user-selected fields. See
 [Job parsing architecture](docs/architecture/job-parsing-authoritative-records.md).
 
+Authoritative Jobs also receive deterministic, versioned comparison representations. Explainable
+duplicate candidates remain unconfirmed until the user explicitly marks them same, different, or
+deferred; same-opportunity groups preserve every Job and require a selected primary. See
+[Job canonicalization and duplicate architecture](docs/architecture/job-canonicalization-duplicates.md).
+
 ## Operating model
 
 - ChatGPT Work discovers opportunities, performs contextual analysis, and drafts application materials.
