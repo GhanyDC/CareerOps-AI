@@ -558,6 +558,59 @@ details .raw-content {
   align-items: start;
 }
 
+.duplicate-comparison-grid,
+.decision-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.decision-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.choice-list {
+  display: grid;
+  gap: 0.65rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.choice-list label {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.evidence-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: #f5f7f7;
+}
+
+.evidence-match {
+  border-inline-start: 0.3rem solid #15803d;
+}
+
+.evidence-conflict {
+  border-inline-start: 0.3rem solid #b45309;
+}
+
+.compact-list {
+  margin: 0.5rem 0 0;
+  padding-inline-start: 1.25rem;
+  columns: 2;
+}
+
+.break-anywhere {
+  overflow-wrap: anywhere;
+}
+
 .parse-review-grid > aside {
   position: sticky;
   top: 6rem;
@@ -611,6 +664,15 @@ dd {
 
   .parse-review-grid {
     grid-template-columns: 1fr;
+  }
+
+  .duplicate-comparison-grid,
+  .decision-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-list {
+    columns: 1;
   }
 
   .parse-review-grid > aside {

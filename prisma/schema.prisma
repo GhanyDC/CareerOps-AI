@@ -50,6 +50,8 @@ enum AuditEntityType {
   CLAIM
   DISCOVERY_IMPORT_BATCH
   JOB
+  JOB_DUPLICATE_CANDIDATE
+  JOB_DUPLICATE_GROUP
 }
 
 enum AuditAction {
@@ -71,6 +73,8 @@ enum AuditAction {
   JOB_ARCHIVED
   JOB_RESTORED
   JOB_SOURCE_PRIVACY_REDACTED
+  JOB_DUPLICATE_DECISION_RECORDED
+  JOB_DUPLICATE_GROUP_CHANGED
 }
 
 enum DiscoveryImportMethod {
@@ -162,6 +166,25 @@ enum JobParsingEventType {
   PARSE_SOURCE_PRIVACY_REDACTED
 }
 
+enum JobDuplicateDecision {
+  SAME_OPPORTUNITY
+  DIFFERENT_OPPORTUNITIES
+  DEFERRED
+}
+
+enum JobDuplicateEvidenceTier {
+  STRONG
+  MODERATE
+}
+
+enum JobDuplicateEventType {
+  CANDIDATE_CREATED
+  CANDIDATE_REEVALUATED
+  DUPLICATE_DECISION_RECORDED
+  DUPLICATE_DECISION_MARKED_STALE
+  DUPLICATE_GROUP_CHANGED
+}
+
 enum UserStatus {
   ACTIVE
   SUSPENDED
@@ -194,22 +217,27 @@ model User {
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
-  candidateProfile          CandidateProfile?
-  experiences               Experience[]
-  projects                  Project[]
-  evidenceItems             EvidenceItem[]
-  claims                    Claim[]
-  auditLogs                 AuditLog[]
-  authAccounts              AuthAccount[]
-  authSessions              AuthSession[]
-  authenticationAuditLogs   AuthenticationAuditLog[]
-  discoveryImportBatches    DiscoveryImportBatch[]
-  jobDiscoveries            JobDiscovery[]
-  discoveryProcessingEvents DiscoveryProcessingEvent[]
-  jobs                      Job[]
-  jobParseDrafts            JobParseDraft[]
-  jobSources                JobSource[]
-  jobParsingEvents          JobParsingEvent[]
+  candidateProfile            CandidateProfile?
+  experiences                 Experience[]
+  projects                    Project[]
+  evidenceItems               EvidenceItem[]
+  claims                      Claim[]
+  auditLogs                   AuditLog[]
+  authAccounts                AuthAccount[]
+  authSessions                AuthSession[]
+  authenticationAuditLogs     AuthenticationAuditLog[]
+  discoveryImportBatches      DiscoveryImportBatch[]
+  jobDiscoveries              JobDiscovery[]
+  discoveryProcessingEvents   DiscoveryProcessingEvent[]
+  jobs                        Job[]
+  jobParseDrafts              JobParseDraft[]
+  jobSources                  JobSource[]
+  jobParsingEvents            JobParsingEvent[]
+  jobCanonicalRepresentations JobCanonicalRepresentation[]
+  jobDuplicateCandidates      JobDuplicateCandidate[]
+  jobDuplicateGroups          JobDuplicateGroup[]
+  jobDuplicateGroupMembers    JobDuplicateGroupMember[]
+  jobDuplicateEvents          JobDuplicateEvent[]
 }
 
 model AuthAccount {
@@ -554,10 +582,15 @@ model Job {
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sources       JobSource[]
-  reparseDrafts JobParseDraft[]   @relation("ReparseTarget")
-  parsingEvents JobParsingEvent[]
+  user                     User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources                  JobSource[]
+  reparseDrafts            JobParseDraft[]             @relation("ReparseTarget")
+  parsingEvents            JobParsingEvent[]
+  canonicalRepresentation  JobCanonicalRepresentation?
+  duplicateCandidatesAsA   JobDuplicateCandidate[]     @relation("DuplicateCandidateJobA")
+  duplicateCandidatesAsB   JobDuplicateCandidate[]     @relation("DuplicateCandidateJobB")
+  primaryDuplicateGroups   JobDuplicateGroup[]         @relation("DuplicateGroupPrimary")
+  duplicateGroupMembership JobDuplicateGroupMember?
 
   @@unique([id, userId])
   @@index([userId, status, confirmedAt, id])
@@ -653,5 +686,147 @@ model JobParsingEvent {
 
   @@index([userId, parseDraftId, createdAt])
   @@index([userId, jobId, createdAt])
+  @@index([userId, eventType, createdAt])
+}
+
+model JobCanonicalRepresentation {
+  id                           String                   @id @default(cuid())
+  userId                       String
+  jobId                        String
+  canonicalizationVersion      Int                      @default(1)
+  urlCanonicalizationVersion   Int                      @default(1)
+  sourceJobVersion             Int
+  canonicalTitle               String                   @db.VarChar(200)
+  canonicalCompanyName         String?                  @db.VarChar(200)
+  employmentType               JobEmploymentType?
+  workplaceArrangement         JobWorkplaceArrangement?
+  experienceLevel              JobExperienceLevel?
+  countryCode                  String?                  @db.VarChar(2)
+  canonicalRegion              String?                  @db.VarChar(160)
+  canonicalCity                String?                  @db.VarChar(160)
+  canonicalLocationLabel       String?                  @db.VarChar(300)
+  salaryMin                    Decimal?                 @db.Decimal(14, 2)
+  salaryMax                    Decimal?                 @db.Decimal(14, 2)
+  salaryCurrency               String?                  @db.VarChar(3)
+  salaryPeriod                 JobSalaryPeriod?
+  postedAt                     DateTime?                @db.Date
+  closesAt                     DateTime?                @db.Date
+  canonicalSourceUrl           String?                  @db.VarChar(2048)
+  canonicalSourceUrlHash       String?                  @db.Char(64)
+  companyTitleHash             String?                  @db.Char(64)
+  companyTitleLocationHash     String?                  @db.Char(64)
+  descriptionFingerprint       String?                  @db.Char(64)
+  responsibilitiesFingerprint  String?                  @db.Char(64)
+  qualificationsFingerprint    String?                  @db.Char(64)
+  skillsFingerprint            String?                  @db.Char(64)
+  structuredContentFingerprint String?                  @db.Char(64)
+  comparisonHash               String                   @db.Char(64)
+  createdAt                    DateTime                 @default(now())
+  updatedAt                    DateTime                 @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  Job  @relation(fields: [jobId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([jobId, userId])
+  @@index([userId, canonicalSourceUrlHash])
+  @@index([userId, companyTitleHash])
+  @@index([userId, companyTitleLocationHash])
+  @@index([userId, sourceJobVersion])
+}
+
+model JobDuplicateCandidate {
+  id                              String                   @id @default(cuid())
+  userId                          String
+  jobAId                          String
+  jobBId                          String
+  activeCandidate                 Boolean                  @default(true)
+  evidenceTier                    JobDuplicateEvidenceTier
+  ruleSetVersion                  Int                      @default(1)
+  canonicalizationVersion         Int                      @default(1)
+  jobARepresentationHash          String                   @db.Char(64)
+  jobBRepresentationHash          String                   @db.Char(64)
+  evidence                        Json
+  conflicts                       Json
+  decision                        JobDuplicateDecision?
+  decisionActorUserId             String?
+  decisionAt                      DateTime?
+  decisionRuleSetVersion          Int?
+  decisionCanonicalizationVersion Int?
+  decisionJobAVersion             Int?
+  decisionJobBVersion             Int?
+  decisionNeedsReview             Boolean                  @default(false)
+  decisionStaleAt                 DateTime?
+  evaluatedAt                     DateTime                 @default(now())
+  version                         Int                      @default(1)
+  createdAt                       DateTime                 @default(now())
+  updatedAt                       DateTime                 @updatedAt
+
+  user   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobA   Job                 @relation("DuplicateCandidateJobA", fields: [jobAId, userId], references: [id, userId], onDelete: Restrict)
+  jobB   Job                 @relation("DuplicateCandidateJobB", fields: [jobBId, userId], references: [id, userId], onDelete: Restrict)
+  events JobDuplicateEvent[]
+
+  @@unique([id, userId])
+  @@unique([userId, jobAId, jobBId])
+  @@index([userId, activeCandidate, decisionNeedsReview, updatedAt, id])
+  @@index([userId, decision, updatedAt, id])
+  @@index([userId, jobAId])
+  @@index([userId, jobBId])
+}
+
+model JobDuplicateGroup {
+  id           String   @id @default(cuid())
+  userId       String
+  primaryJobId String
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  primaryJob        Job                       @relation("DuplicateGroupPrimary", fields: [primaryJobId, userId], references: [id, userId], onDelete: Restrict)
+  primaryMembership JobDuplicateGroupMember   @relation("DuplicateGroupPrimaryMembership", fields: [id, primaryJobId, userId], references: [groupId, jobId, userId], onDelete: NoAction)
+  members           JobDuplicateGroupMember[] @relation("DuplicateGroupMembers")
+
+  @@unique([id, userId])
+  @@unique([id, primaryJobId, userId])
+  @@index([userId, updatedAt, id])
+  @@index([userId, primaryJobId])
+}
+
+model JobDuplicateGroupMember {
+  groupId   String
+  userId    String
+  jobId     String
+  createdAt DateTime @default(now())
+
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group           JobDuplicateGroup  @relation("DuplicateGroupMembers", fields: [groupId, userId], references: [id, userId], onDelete: Cascade)
+  primaryForGroup JobDuplicateGroup? @relation("DuplicateGroupPrimaryMembership")
+  job             Job                @relation(fields: [jobId, userId], references: [id, userId], onDelete: Restrict)
+
+  @@id([groupId, jobId])
+  @@unique([groupId, jobId, userId])
+  @@unique([jobId, userId])
+  @@index([userId, groupId])
+}
+
+model JobDuplicateEvent {
+  id               String                @id @default(cuid())
+  userId           String
+  candidateId      String?
+  eventType        JobDuplicateEventType
+  actorUserId      String?
+  idempotencyKey   String?               @db.Uuid
+  requestHash      String?               @db.Char(64)
+  previousDecision JobDuplicateDecision?
+  newDecision      JobDuplicateDecision?
+  safeMetadata     Json
+  createdAt        DateTime              @default(now())
+
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  candidate JobDuplicateCandidate? @relation(fields: [candidateId, userId], references: [id, userId], onDelete: Restrict)
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, candidateId, createdAt])
   @@index([userId, eventType, createdAt])
 }

@@ -72,7 +72,9 @@ Integration tests require PostgreSQL. E2E tests require a production build and t
 The candidate profile, experiences, projects, evidence bank, claims bank, production Google authentication, tenant request context, authentication audit history, and evidence transition audit history are implemented in the current vertical slice.
 
 Job discovery, deterministic parse drafts, explicit confirmation, authoritative Job records, and
-source provenance are implemented. Job scoring, application tracking, RAG/vector retrieval,
+source provenance are implemented. Deterministic Job canonicalization, explainable duplicate
+candidates, explicit duplicate decisions, non-destructive duplicate groups, and primary Job
+selection are also implemented. Job scoring, application tracking, RAG/vector retrieval,
 additional authentication providers, PostgreSQL RLS, n8n runtime integration, job scraping, and
 autonomous agent workflows remain deferred. They are possible later CareerOps capabilities and are
 not permanently prohibited.

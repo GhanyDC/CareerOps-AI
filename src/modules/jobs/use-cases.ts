@@ -2,6 +2,7 @@ import "server-only";
 
 import type { JobStatus, Prisma } from "@/generated/prisma/client";
 import { recordAudit } from "@/modules/audit/public.server";
+import { refreshDuplicateStateForJob } from "@/modules/job-duplicates/public.server";
 import { DomainError } from "@/modules/shared/errors";
 import { runSerializableTransaction } from "@/server/db/transaction";
 
@@ -107,6 +108,7 @@ export async function updateJob(
         version: { increment: 1 },
       },
     });
+    await refreshDuplicateStateForJob(tx, userId, updated.id);
     await recordAudit(tx, {
       userId,
       entityType: "JOB",
@@ -146,6 +148,7 @@ export async function transitionJob(userId: string, id: string, untrustedInput: 
         version: { increment: 1 },
       },
     });
+    await refreshDuplicateStateForJob(tx, userId, updated.id);
     await recordAudit(tx, {
       userId,
       entityType: "JOB",

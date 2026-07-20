@@ -62,6 +62,9 @@ export default async function JobsPage({
         <Link className="button secondary" href="/jobs/review">
           Parsing review queue
         </Link>
+        <Link className="button secondary" href="/jobs/duplicates">
+          Duplicate review
+        </Link>
       </div>
       <form className="filter-bar" method="get">
         <select name="status" defaultValue={status} aria-label="Job status">
@@ -128,6 +131,16 @@ export default async function JobsPage({
                 {job.employmentType ? humanizeEnum(job.employmentType) : "Employment type unknown"}
               </span>
               <span>{job._count.sources} source record(s)</span>
+              {job.duplicateCandidatesAsA.length + job.duplicateCandidatesAsB.length > 0 ? (
+                <span>Possible duplicate review</span>
+              ) : null}
+              {job.duplicateGroupMembership ? (
+                <span>
+                  {job.duplicateGroupMembership.group.primaryJobId === job.id
+                    ? "Primary duplicate-group record"
+                    : "Confirmed duplicate-group member"}
+                </span>
+              ) : null}
               <span>Confirmed {job.confirmedAt.toLocaleString()}</span>
             </div>
           </Link>
