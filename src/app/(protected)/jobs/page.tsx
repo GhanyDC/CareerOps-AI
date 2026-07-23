@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { StatusBadge } from "@/components/status-badge";
+import { isJobFilterEvaluationFresh } from "@/modules/job-hard-filters/public.server";
 import { listJobs } from "@/modules/jobs/use-cases";
 import { humanizeEnum } from "@/modules/shared/presentation";
 import { getRequestContext } from "@/server/request-context";
@@ -36,13 +37,19 @@ export default async function JobsPage({
   );
   const search = one(query.query)?.trim().slice(0, 200) || undefined;
   const direction = one(query.sort) === "OLDEST" ? "asc" : "desc";
-  const { items, nextCursor } = await listJobs(userId, {
+  const outcomes = ["PASS", "FAIL", "NEEDS_REVIEW", "STALE_OR_MISSING"] as const;
+  const filterOutcome = outcomes.find((value) => value === one(query.filterOutcome));
+  const consideration = one(query.view) === "CONSIDERATION";
+  const includeDuplicateMembers = one(query.includeDuplicateMembers) === "1";
+  const { items, nextCursor, filterProfile } = await listJobs(userId, {
     status,
     employmentType,
     workplaceArrangement,
     query: search,
     direction,
     cursor: one(query.cursor),
+    filterOutcome,
+    consideration: consideration && !includeDuplicateMembers,
   });
   const next = new URLSearchParams();
   next.set("status", status);
@@ -50,6 +57,9 @@ export default async function JobsPage({
   if (workplaceArrangement) next.set("workplaceArrangement", workplaceArrangement);
   if (search) next.set("query", search);
   if (direction === "asc") next.set("sort", "OLDEST");
+  if (filterOutcome) next.set("filterOutcome", filterOutcome);
+  if (consideration) next.set("view", "CONSIDERATION");
+  if (includeDuplicateMembers) next.set("includeDuplicateMembers", "1");
   if (nextCursor) next.set("cursor", nextCursor);
 
   return (
@@ -64,6 +74,9 @@ export default async function JobsPage({
         </Link>
         <Link className="button secondary" href="/jobs/duplicates">
           Duplicate review
+        </Link>
+        <Link className="button secondary" href="/jobs/filters">
+          Hard filter settings
         </Link>
       </div>
       <form className="filter-bar" method="get">
@@ -83,6 +96,34 @@ export default async function JobsPage({
             </option>
           ))}
         </select>
+        <select
+          name="filterOutcome"
+          defaultValue={filterOutcome ?? ""}
+          aria-label="Hard-filter result"
+        >
+          <option value="">All hard-filter results</option>
+          <option value="PASS">Pass</option>
+          <option value="FAIL">Fail</option>
+          <option value="NEEDS_REVIEW">Needs review</option>
+          <option value="STALE_OR_MISSING">Stale or not evaluated</option>
+        </select>
+        <select
+          name="view"
+          defaultValue={consideration ? "CONSIDERATION" : "INVENTORY"}
+          aria-label="Job view"
+        >
+          <option value="INVENTORY">Authoritative inventory</option>
+          <option value="CONSIDERATION">Consideration view</option>
+        </select>
+        <label className="checkbox-field">
+          <input
+            type="checkbox"
+            name="includeDuplicateMembers"
+            value="1"
+            defaultChecked={includeDuplicateMembers}
+          />
+          <span>Include duplicate members</span>
+        </label>
         <select
           name="workplaceArrangement"
           defaultValue={workplaceArrangement ?? ""}
@@ -124,6 +165,17 @@ export default async function JobsPage({
                 <h2>{job.title}</h2>
               </div>
               <StatusBadge value={job.status} />
+              {job.status === "ARCHIVED" && job.filterEvaluation ? (
+                <StatusBadge value={job.filterEvaluation.outcome} />
+              ) : !filterProfile ? (
+                <StatusBadge value="FILTERS_NOT_CONFIGURED" />
+              ) : isJobFilterEvaluationFresh(filterProfile, job, job.filterEvaluation) ? (
+                <StatusBadge value={job.filterEvaluation!.outcome} />
+              ) : job.filterEvaluation ? (
+                <StatusBadge value="STALE" />
+              ) : (
+                <StatusBadge value="NOT_EVALUATED" />
+              )}
             </div>
             <div className="record-meta">
               <span>{job.locationLabel ?? "Location not provided"}</span>

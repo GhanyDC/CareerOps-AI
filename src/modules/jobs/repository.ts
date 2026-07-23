@@ -16,6 +16,7 @@ export type JobListFilters = Readonly<{
   cursor?: Readonly<{ confirmedAt: Date; id: string }>;
   pageSize?: number;
   direction?: "asc" | "desc";
+  consideration?: boolean;
 }>;
 
 export function listJobRecords(userId: string, filters: JobListFilters = {}) {
@@ -26,23 +27,30 @@ export function listJobRecords(userId: string, filters: JobListFilters = {}) {
     employmentType: filters.employmentType,
     workplaceArrangement: filters.workplaceArrangement,
   };
+  const constraints: Prisma.JobWhereInput[] = [];
   if (filters.query) {
-    where.OR = [
-      { title: { contains: filters.query, mode: "insensitive" } },
-      { companyName: { contains: filters.query, mode: "insensitive" } },
-    ];
+    constraints.push({
+      OR: [
+        { title: { contains: filters.query, mode: "insensitive" } },
+        { companyName: { contains: filters.query, mode: "insensitive" } },
+      ],
+    });
   }
   if (filters.cursor) {
     const range = direction === "desc" ? "lt" : "gt";
-    where.AND = [
-      {
-        OR: [
-          { confirmedAt: { [range]: filters.cursor.confirmedAt } },
-          { confirmedAt: filters.cursor.confirmedAt, id: { [range]: filters.cursor.id } },
-        ],
-      },
-    ];
+    constraints.push({
+      OR: [
+        { confirmedAt: { [range]: filters.cursor.confirmedAt } },
+        { confirmedAt: filters.cursor.confirmedAt, id: { [range]: filters.cursor.id } },
+      ],
+    });
   }
+  if (filters.consideration) {
+    constraints.push({
+      OR: [{ duplicateGroupMembership: { is: null } }, { primaryDuplicateGroups: { some: {} } }],
+    });
+  }
+  if (constraints.length > 0) where.AND = constraints;
   return prisma.job.findMany({
     where,
     include: {
@@ -64,6 +72,7 @@ export function listJobRecords(userId: string, filters: JobListFilters = {}) {
       duplicateGroupMembership: {
         include: { group: { select: { id: true, primaryJobId: true } } },
       },
+      filterEvaluation: true,
     },
     orderBy: [{ confirmedAt: direction }, { id: direction }],
     take: Math.min(filters.pageSize ?? 25, 50) + 1,
@@ -93,6 +102,7 @@ export function getJobRecord(userId: string, id: string) {
       duplicateGroupMembership: {
         include: { group: { select: { id: true, primaryJobId: true } } },
       },
+      filterEvaluation: true,
     },
   });
 }

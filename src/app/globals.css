@@ -458,7 +458,8 @@ legend {
 }
 
 .status-verified,
-.status-approved {
+.status-approved,
+.status-pass {
   background: #e3f4e9;
   color: #23613b;
 }
@@ -469,9 +470,24 @@ legend {
 }
 
 .status-rejected,
-.status-prohibited {
+.status-prohibited,
+.status-fail {
   background: #fde6e6;
   color: #8a2929;
+}
+
+.status-needs_review,
+.status-stale,
+.status-not_evaluated {
+  background: #fff3d6;
+  color: #765514;
+}
+
+.status-not_configured,
+.status-filters_not_configured,
+.status-disabled {
+  background: #e7e9ec;
+  color: #555e66;
 }
 
 .status-archived {
@@ -502,7 +518,7 @@ legend {
 
 .filter-bar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: 0.65rem;
   padding: 0.9rem;
 }

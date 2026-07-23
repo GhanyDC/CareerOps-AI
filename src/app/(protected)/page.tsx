@@ -25,6 +25,18 @@ export default async function Dashboard() {
     ["Inbox discoveries", summary.inboxDiscoveries, "/discoveries"],
     ["Active Jobs", summary.activeJobs, "/jobs"],
     ["Duplicate reviews", summary.pendingDuplicateReviews, "/jobs/duplicates"],
+    ["Filter: pass", summary.jobFilters.pass, "/jobs?view=CONSIDERATION&filterOutcome=PASS"],
+    ["Filter: fail", summary.jobFilters.fail, "/jobs?view=CONSIDERATION&filterOutcome=FAIL"],
+    [
+      "Filter: needs review",
+      summary.jobFilters.needsReview,
+      "/jobs?view=CONSIDERATION&filterOutcome=NEEDS_REVIEW",
+    ],
+    [
+      "Filter: stale or missing",
+      summary.jobFilters.staleOrMissing,
+      "/jobs?view=CONSIDERATION&filterOutcome=STALE_OR_MISSING",
+    ],
   ] as const;
 
   return (
@@ -68,6 +80,11 @@ export default async function Dashboard() {
           </Link>
         </div>
       </section>
+      {!summary.jobFilters.configured ? (
+        <section className="notice">
+          Job Hard Filters are not configured. <Link href="/jobs/filters">Configure filters</Link>.
+        </section>
+      ) : null}
     </div>
   );
 }

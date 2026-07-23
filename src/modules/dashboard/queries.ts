@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/server/db/client";
+import { getJobFilterDashboardSummary } from "@/modules/job-hard-filters/public.server";
 
 export async function getDashboardSummary(userId: string) {
   const [
@@ -33,6 +34,7 @@ export async function getDashboardSummary(userId: string) {
       },
     }),
   ]);
+  const jobFilters = await getJobFilterDashboardSummary(userId);
 
   return {
     experiences,
@@ -45,5 +47,6 @@ export async function getDashboardSummary(userId: string) {
     inboxDiscoveries,
     activeJobs,
     pendingDuplicateReviews,
+    jobFilters,
   };
 }
