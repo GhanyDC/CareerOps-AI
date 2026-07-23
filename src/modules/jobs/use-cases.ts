@@ -3,6 +3,12 @@ import "server-only";
 import type { JobStatus, Prisma } from "@/generated/prisma/client";
 import { recordAudit } from "@/modules/audit/public.server";
 import { refreshDuplicateStateForJob } from "@/modules/job-duplicates/public.server";
+import {
+  evaluateJobHardFiltersInTransaction,
+  isJobFilterEvaluationFresh,
+  viewJobFilterProfile,
+} from "@/modules/job-hard-filters/public.server";
+import type { JobFilterOutcome } from "@/generated/prisma/client";
 import { DomainError } from "@/modules/shared/errors";
 import { runSerializableTransaction } from "@/server/db/transaction";
 
@@ -41,19 +47,34 @@ function parseCursor(value?: string) {
 
 export async function listJobs(
   userId: string,
-  input: Omit<JobListFilters, "cursor"> & { cursor?: string } = {},
+  input: Omit<JobListFilters, "cursor"> & {
+    cursor?: string;
+    filterOutcome?: JobFilterOutcome | "STALE_OR_MISSING";
+  } = {},
 ) {
   const pageSize = Math.min(input.pageSize ?? 25, 50);
-  const records = await listJobRecords(userId, {
-    ...input,
-    cursor: parseCursor(input.cursor),
-    pageSize,
-  });
+  const [records, filterProfile] = await Promise.all([
+    listJobRecords(userId, {
+      ...input,
+      cursor: parseCursor(input.cursor),
+      pageSize,
+    }),
+    viewJobFilterProfile(userId),
+  ]);
   const hasNext = records.length > pageSize;
-  const items = records.slice(0, pageSize);
-  const last = hasNext ? items.at(-1) : undefined;
+  const page = records.slice(0, pageSize);
+  const items = input.filterOutcome
+    ? page.filter((job) => {
+        const fresh = isJobFilterEvaluationFresh(filterProfile, job, job.filterEvaluation);
+        return input.filterOutcome === "STALE_OR_MISSING"
+          ? !fresh
+          : fresh && job.filterEvaluation?.outcome === input.filterOutcome;
+      })
+    : page;
+  const last = hasNext ? page.at(-1) : undefined;
   return {
     items,
+    filterProfile,
     nextCursor: last
       ? Buffer.from(
           JSON.stringify({ confirmedAt: last.confirmedAt.toISOString(), id: last.id }),
@@ -109,6 +130,7 @@ export async function updateJob(
       },
     });
     await refreshDuplicateStateForJob(tx, userId, updated.id);
+    await evaluateJobHardFiltersInTransaction(tx, userId, updated.id, userId);
     await recordAudit(tx, {
       userId,
       entityType: "JOB",
@@ -149,6 +171,9 @@ export async function transitionJob(userId: string, id: string, untrustedInput: 
       },
     });
     await refreshDuplicateStateForJob(tx, userId, updated.id);
+    if (targetStatus === "ACTIVE") {
+      await evaluateJobHardFiltersInTransaction(tx, userId, updated.id, userId);
+    }
     await recordAudit(tx, {
       userId,
       entityType: "JOB",

@@ -51,6 +51,17 @@ CareerOps may prepare, review, and track applications, but it must never automat
 - Block experience or project deletion while evidence depends on it. Do not silently cascade evidence or claims from product workflows.
 - Candidate-specific facts belong only in the idempotent development seed, never in reusable components or business rules.
 
+## Job Hard Filter rules
+
+- Keep the v1 catalog fixed to minimum salary, allowed employment types, allowed workplace arrangements, and country allow/deny.
+- A filter `FAIL` is informational only. It must never automatically archive, reject, delete, hide, mutate, or submit a Job.
+- Evaluate every authoritative Job independently, including duplicate-group members. Never copy or consolidate member fields or results.
+- Collapse duplicate groups only in consideration views and dashboard counts, using the explicit active primary. Keep the authoritative inventory complete.
+- Derive freshness from the current rule set, profile version/hash, and authoritative Job version. Staleness is not an evaluation outcome.
+- Keep explanations and compact events limited to safe structured fields and fixed reasons. Never persist raw descriptions, Discovery payloads, contacts, application instructions, or sensitive provenance there.
+- Lifecycle reevaluation belongs in the same serializable transaction as confirmation, authoritative field edits, selected-field reparses, and restore. Archive retains the last result without reevaluation.
+- Bounded scans are explicit, version-bound, and limited to 50 active Jobs per page. Do not introduce a worker or scheduler.
+
 ## Required checks
 
 Before work is complete, run the checks appropriate to the change, including:
@@ -74,7 +85,9 @@ The candidate profile, experiences, projects, evidence bank, claims bank, produc
 Job discovery, deterministic parse drafts, explicit confirmation, authoritative Job records, and
 source provenance are implemented. Deterministic Job canonicalization, explainable duplicate
 candidates, explicit duplicate decisions, non-destructive duplicate groups, and primary Job
-selection are also implemented. Job scoring, application tracking, RAG/vector retrieval,
+selection are also implemented. Versioned Job Hard Filter profiles, deterministic current
+evaluations, compact events, bounded scans, and primary-collapsed consideration projections are
+implemented in the current working slice. Job scoring, application tracking, RAG/vector retrieval,
 additional authentication providers, PostgreSQL RLS, n8n runtime integration, job scraping, and
 autonomous agent workflows remain deferred. They are possible later CareerOps capabilities and are
 not permanently prohibited.

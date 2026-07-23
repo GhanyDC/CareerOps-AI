@@ -52,6 +52,7 @@ enum AuditEntityType {
   JOB
   JOB_DUPLICATE_CANDIDATE
   JOB_DUPLICATE_GROUP
+  JOB_FILTER_PROFILE
 }
 
 enum AuditAction {
@@ -75,6 +76,8 @@ enum AuditAction {
   JOB_SOURCE_PRIVACY_REDACTED
   JOB_DUPLICATE_DECISION_RECORDED
   JOB_DUPLICATE_GROUP_CHANGED
+  JOB_FILTER_PROFILE_CREATED
+  JOB_FILTER_PROFILE_UPDATED
 }
 
 enum DiscoveryImportMethod {
@@ -185,6 +188,19 @@ enum JobDuplicateEventType {
   DUPLICATE_GROUP_CHANGED
 }
 
+enum JobFilterOutcome {
+  PASS
+  FAIL
+  NEEDS_REVIEW
+}
+
+enum JobFilterEventType {
+  PROFILE_CREATED
+  PROFILE_UPDATED
+  JOB_EVALUATED
+  JOB_REEVALUATED
+}
+
 enum UserStatus {
   ACTIVE
   SUSPENDED
@@ -238,6 +254,9 @@ model User {
   jobDuplicateGroups          JobDuplicateGroup[]
   jobDuplicateGroupMembers    JobDuplicateGroupMember[]
   jobDuplicateEvents          JobDuplicateEvent[]
+  jobFilterProfile            JobFilterProfile?
+  jobFilterEvaluations        JobFilterEvaluation[]
+  jobFilterEvents             JobFilterEvent[]
 }
 
 model AuthAccount {
@@ -591,6 +610,8 @@ model Job {
   duplicateCandidatesAsB   JobDuplicateCandidate[]     @relation("DuplicateCandidateJobB")
   primaryDuplicateGroups   JobDuplicateGroup[]         @relation("DuplicateGroupPrimary")
   duplicateGroupMembership JobDuplicateGroupMember?
+  filterEvaluation         JobFilterEvaluation?
+  filterEvents             JobFilterEvent[]
 
   @@unique([id, userId])
   @@index([userId, status, confirmedAt, id])
@@ -829,4 +850,68 @@ model JobDuplicateEvent {
   @@unique([userId, idempotencyKey])
   @@index([userId, candidateId, createdAt])
   @@index([userId, eventType, createdAt])
+}
+
+model JobFilterProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  configuration     Json
+  configurationHash String   @db.Char(64)
+  version           Int      @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  evaluations JobFilterEvaluation[]
+  events      JobFilterEvent[]
+
+  @@unique([id, userId])
+}
+
+model JobFilterEvaluation {
+  id                   String           @id @default(cuid())
+  userId               String
+  profileId            String
+  jobId                String
+  outcome              JobFilterOutcome
+  ruleSetVersion       Int
+  filterProfileVersion Int
+  configurationHash    String           @db.Char(64)
+  sourceJobVersion     Int
+  explanation          Json
+  explanationHash      String           @db.Char(64)
+  evaluatedAt          DateTime         @default(now())
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile JobFilterProfile @relation(fields: [profileId, userId], references: [id, userId], onDelete: Cascade)
+  job     Job              @relation(fields: [jobId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([id, userId])
+  @@unique([jobId, userId])
+  @@index([userId, outcome, updatedAt, id])
+  @@index([userId, filterProfileVersion, outcome])
+}
+
+model JobFilterEvent {
+  id                   String             @id @default(cuid())
+  userId               String
+  profileId            String
+  jobId                String?
+  eventType            JobFilterEventType
+  actorUserId          String?
+  previousOutcome      JobFilterOutcome?
+  newOutcome           JobFilterOutcome?
+  filterProfileVersion Int
+  sourceJobVersion     Int?
+  safeMetadata         Json
+  createdAt            DateTime           @default(now())
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile JobFilterProfile @relation(fields: [profileId, userId], references: [id, userId], onDelete: Cascade)
+  job     Job?             @relation(fields: [jobId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@index([userId, profileId, createdAt])
+  @@index([userId, jobId, createdAt])
 }

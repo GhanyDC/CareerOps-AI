@@ -4,11 +4,17 @@ import { notFound } from "next/navigation";
 import { CreateParseDraftForm } from "@/components/create-parse-draft-form";
 import { JobForm } from "@/components/job-form";
 import { JobStatusActions } from "@/components/job-status-actions";
+import { JobFilterResult } from "@/components/job-filter-result";
+import { ReevaluateJobFilterForm } from "@/components/reevaluate-job-filter-form";
 import { StatusBadge } from "@/components/status-badge";
 import { DomainError } from "@/modules/shared/errors";
 import { humanizeEnum } from "@/modules/shared/presentation";
 import { persistedJobToValues } from "@/modules/jobs/schemas";
 import { viewJob } from "@/modules/jobs/use-cases";
+import {
+  isJobFilterEvaluationFresh,
+  viewJobFilterEvaluation,
+} from "@/modules/job-hard-filters/public.server";
 import { getRequestContext } from "@/server/request-context";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +24,12 @@ export default async function JobDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ confirmed?: string; saved?: string; transitioned?: string }>;
+  searchParams: Promise<{
+    confirmed?: string;
+    saved?: string;
+    transitioned?: string;
+    filterEvaluated?: string;
+  }>;
 }) {
   const [{ id }, query, { userId }] = await Promise.all([
     params,
@@ -32,6 +43,8 @@ export default async function JobDetailPage({
     if (error instanceof DomainError && error.code === "JOB_NOT_FOUND") notFound();
     throw error;
   }
+  const filterState = await viewJobFilterEvaluation(userId, id);
+  const filterFresh = isJobFilterEvaluationFresh(filterState.profile, job, filterState.evaluation);
   return (
     <div className="page-stack">
       <div className="page-heading">
@@ -49,6 +62,9 @@ export default async function JobDetailPage({
       ) : null}
       {query.saved ? <div className="notice success">Authoritative Job updated.</div> : null}
       {query.transitioned ? <div className="notice success">Job status updated.</div> : null}
+      {query.filterEvaluated ? (
+        <div className="notice success">Hard filters reevaluated against the current Job.</div>
+      ) : null}
       {job.duplicateGroupMembership ? (
         <div className="notice">
           This Job is{" "}
@@ -69,6 +85,36 @@ export default async function JobDetailPage({
         </div>
       ) : null}
       <JobStatusActions id={job.id} status={job.status} version={job.version} />
+      {!filterState.profile ? (
+        <div className="notice">
+          Filters not configured. <Link href="/jobs/filters">Configure Job Hard Filters</Link>.
+        </div>
+      ) : filterState.evaluation ? (
+        <div className="page-stack">
+          {job.status === "ARCHIVED" ? (
+            <div className="notice">
+              This archived Job retains its last result but is excluded from active filter views and
+              counts.
+            </div>
+          ) : !filterFresh ? (
+            <div className="notice">
+              This result is stale because the Job, profile, or rule-set version changed.
+            </div>
+          ) : null}
+          <JobFilterResult explanation={filterState.evaluation.explanation} />
+          <p>Last evaluated {filterState.evaluation.evaluatedAt.toLocaleString()}</p>
+          {job.status === "ACTIVE" ? <ReevaluateJobFilterForm jobId={job.id} /> : null}
+        </div>
+      ) : (
+        <div className="panel page-stack">
+          <div className="record-card-heading">
+            <h2>Hard-filter result</h2>
+            <StatusBadge value="NOT_EVALUATED" />
+          </div>
+          <p>This Job has not been evaluated against the current filter profile.</p>
+          {job.status === "ACTIVE" ? <ReevaluateJobFilterForm jobId={job.id} /> : null}
+        </div>
+      )}
       <section className="panel">
         <h2>Confirmation summary</h2>
         <dl className="details-list">

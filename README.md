@@ -14,6 +14,11 @@ duplicate candidates remain unconfirmed until the user explicitly marks them sam
 deferred; same-opportunity groups preserve every Job and require a selected primary. See
 [Job canonicalization and duplicate architecture](docs/architecture/job-canonicalization-duplicates.md).
 
+The Job Hard Filters slice adds four deterministic, user-owned constraints over authoritative
+structured fields, with persisted `PASS`, `FAIL`, and `NEEDS_REVIEW` explanations. Results are
+informational only; every duplicate member is evaluated independently while consideration counts
+project explicit group primaries. See [Job Hard Filters architecture](docs/architecture/job-hard-filters.md).
+
 ## Operating model
 
 - ChatGPT Work discovers opportunities, performs contextual analysis, and drafts application materials.
@@ -156,6 +161,6 @@ Automated tests do not contact Google. Complete the [manual Google OAuth smoke t
 
 ## Deferred product phases
 
-This evidence system will later support job requirement matching, RAG retrieval, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages. Those features, additional authentication providers, n8n runtime integration, scoring, application tracking, scraping, and agent workflows remain deferred to separately reviewed increments.
+This evidence system will later support job requirement matching, RAG retrieval, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages. Those features, additional authentication providers, n8n runtime integration, scoring, application tracking, scraping, and agent workflows remain deferred to separately reviewed increments. Job Hard Filters are deterministic eligibility constraints and are not preliminary scoring.
 
 Automatic job-application submission remains prohibited. Scoring, matching, scraping, and application tracking remain deferred.
