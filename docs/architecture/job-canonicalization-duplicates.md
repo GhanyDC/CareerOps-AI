@@ -56,6 +56,8 @@ policy. Old canonical representations and raw duplicate-evidence snapshots are n
 Normal Job mutations evaluate at most 100 blocked matches. Existing or upgraded Jobs use an
 explicit 50-Job paginated scan; no worker, scheduler, or external service is introduced.
 
-Candidate-fit scoring, desirability ranking, hard filters, RAG, embeddings, tailoring, application
-tracking, scraping, URL fetching, company enrichment, external APIs, n8n runtime workflows, and
-application submission remain outside this increment. Application submission remains manual.
+Canonicalization performs no candidate-fit scoring, desirability ranking, hard filtering, RAG,
+embeddings, tailoring, application tracking, scraping, URL fetching, company enrichment, external
+API, n8n runtime workflow, or application submission. Separate reviewed Hard Filter and
+Preliminary Job Scoring modules use authoritative Jobs and duplicate-primary projections without
+changing canonicalization decisions. Application submission remains manual.

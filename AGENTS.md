@@ -62,6 +62,17 @@ CareerOps may prepare, review, and track applications, but it must never automat
 - Lifecycle reevaluation belongs in the same serializable transaction as confirmation, authoritative field edits, selected-field reparses, and restore. Archive retains the last result without reevaluation.
 - Bounded scans are explicit, version-bound, and limited to 50 active Jobs per page. Do not introduce a worker or scheduler.
 
+## Preliminary Job Scoring rules
+
+- Keep the v1 component catalog fixed to salary, employment type, workplace arrangement, and country preferences over authoritative structured Job fields.
+- Keep scoring separate from Hard Filter eligibility. Never convert a Hard Filter `FAIL` into a scoring penalty or use a score to archive, reject, delete, hide, mutate, or submit a Job.
+- Enabled integer weights must total 100. Missing or incomparable component data is excluded from the denominator and exposed through coverage; do not silently treat it as a known mismatch.
+- Score every authoritative Job independently, including duplicate-group members. Collapse only ranking projections and dashboard summaries to explicit active primaries, with an include-members option.
+- Derive freshness from the current scoring rule set, profile version, and authoritative Job version. Staleness is not a numeric score.
+- Keep explanations and compact events limited to safe structured values, fixed reasons, versions, scores, coverage, and hashes. Never retain descriptions, Discovery payloads, contacts, application instructions, or sensitive provenance there.
+- Lifecycle refresh belongs in the same serializable transaction as confirmation, authoritative field edits, selected-field reparses, and restore. Archive retains the last score without refresh.
+- Profile scans are explicit, version-bound, and limited to 50 active Jobs per page. Do not introduce a worker or scheduler.
+
 ## Required checks
 
 Before work is complete, run the checks appropriate to the change, including:
@@ -87,9 +98,11 @@ source provenance are implemented. Deterministic Job canonicalization, explainab
 candidates, explicit duplicate decisions, non-destructive duplicate groups, and primary Job
 selection are also implemented. Versioned Job Hard Filter profiles, deterministic current
 evaluations, compact events, bounded scans, and primary-collapsed consideration projections are
-implemented in the current working slice. Job scoring, application tracking, RAG/vector retrieval,
-additional authentication providers, PostgreSQL RLS, n8n runtime integration, job scraping, and
-autonomous agent workflows remain deferred. They are possible later CareerOps capabilities and are
-not permanently prohibited.
+implemented. Versioned Preliminary Job Scoring profiles, deterministic current scores, coverage,
+compact events, bounded scans, and primary-collapsed ranking projections are implemented in the
+current working slice. Application tracking, requirement-to-evidence matching, RAG/vector
+retrieval, additional authentication providers, PostgreSQL RLS, n8n runtime integration, job
+scraping, and autonomous agent workflows remain deferred. They are possible later CareerOps
+capabilities and are not permanently prohibited.
 
 Do not begin a deferred capability without a separately reviewed increment. Preserve unrelated user changes and never commit real secrets, generated Prisma output, build output, test reports, or local environment files.

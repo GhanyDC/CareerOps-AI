@@ -50,7 +50,8 @@ reparsed.
 
 ## Deferred work
 
-Scoring, ranking, hard filters, requirement matching, candidate fit, RAG, embeddings, resume or
-cover-letter generation, application tracking, scraping, URL fetching, background parsers, n8n
-runtime workflows, and application submission remain deferred. Application submission remains
-manual.
+Parsing itself performs no scoring, ranking, hard filtering, requirement matching, candidate fit,
+RAG, embeddings, resume or cover-letter generation, application tracking, scraping, URL fetching,
+background parsing, n8n runtime workflow, or application submission. Separate reviewed Hard Filter
+and Preliminary Job Scoring modules consume only confirmed authoritative fields. Requirement
+matching and the remaining capabilities stay deferred. Application submission remains manual.

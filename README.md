@@ -19,6 +19,12 @@ structured fields, with persisted `PASS`, `FAIL`, and `NEEDS_REVIEW` explanation
 informational only; every duplicate member is evaluated independently while consideration counts
 project explicit group primaries. See [Job Hard Filters architecture](docs/architecture/job-hard-filters.md).
 
+Preliminary Job Scoring adds a separate deterministic 0–100 preference ranking with explicit
+coverage, versioned explanations, transactional lifecycle refresh, bounded scans, and
+primary-collapsed ranking projections. It uses only structured salary, employment type, workplace
+arrangement, and country fields; Hard Filter eligibility remains a separate signal. See
+[Preliminary Job Scoring architecture](docs/architecture/preliminary-job-scoring.md).
+
 ## Operating model
 
 - ChatGPT Work discovers opportunities, performs contextual analysis, and drafts application materials.
@@ -161,6 +167,6 @@ Automated tests do not contact Google. Complete the [manual Google OAuth smoke t
 
 ## Deferred product phases
 
-This evidence system will later support job requirement matching, RAG retrieval, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages. Those features, additional authentication providers, n8n runtime integration, scoring, application tracking, scraping, and agent workflows remain deferred to separately reviewed increments. Job Hard Filters are deterministic eligibility constraints and are not preliminary scoring.
+This evidence system will later support job requirement matching, RAG retrieval, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages. Those features, additional authentication providers, n8n runtime integration, application tracking, scraping, and agent workflows remain deferred to separately reviewed increments. Job Hard Filters are deterministic eligibility constraints and remain separate from preliminary preference scoring.
 
-Automatic job-application submission remains prohibited. Scoring, matching, scraping, and application tracking remain deferred.
+Automatic job-application submission remains prohibited. Evidence matching, scraping, and application tracking remain deferred.
