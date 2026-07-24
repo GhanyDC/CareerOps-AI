@@ -6,6 +6,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { recordAudit } from "@/modules/audit/public.server";
 import { refreshDuplicateStateForJob } from "@/modules/job-duplicates/public.server";
 import { evaluateJobHardFiltersInTransaction } from "@/modules/job-hard-filters/public.server";
+import { scoreJobInTransaction } from "@/modules/job-scoring/public.server";
 import { findOwnedDiscoveryForParsing } from "@/modules/discovery/public.server";
 import {
   JOB_CONTRACT_VERSION,
@@ -410,6 +411,7 @@ export async function confirmJobParseDraft(userId: string, id: string, untrusted
       });
       await refreshDuplicateStateForJob(tx, userId, job.id);
       await evaluateJobHardFiltersInTransaction(tx, userId, job.id, userId);
+      await scoreJobInTransaction(tx, userId, job.id, userId);
       await tx.jobParsingEvent.createMany({
         data: [
           {

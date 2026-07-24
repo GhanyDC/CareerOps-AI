@@ -4,15 +4,27 @@ import type { JobStatus, Prisma } from "@/generated/prisma/client";
 import { recordAudit } from "@/modules/audit/public.server";
 import { refreshDuplicateStateForJob } from "@/modules/job-duplicates/public.server";
 import {
+  JOB_FILTER_RULE_SET_VERSION,
   evaluateJobHardFiltersInTransaction,
   isJobFilterEvaluationFresh,
   viewJobFilterProfile,
 } from "@/modules/job-hard-filters/public.server";
+import {
+  JOB_SCORING_RULE_SET_VERSION,
+  scoreJobInTransaction,
+  viewJobScoringProfile,
+} from "@/modules/job-scoring/public.server";
 import type { JobFilterOutcome } from "@/generated/prisma/client";
 import { DomainError } from "@/modules/shared/errors";
 import { runSerializableTransaction } from "@/server/db/transaction";
 
-import { countActiveJobs, getJobRecord, listJobRecords, type JobListFilters } from "./repository";
+import {
+  countActiveJobs,
+  getJobRecord,
+  listJobRecords,
+  listRankedJobRecords,
+  type JobListFilters,
+} from "./repository";
 import {
   JOB_FIELD_NAMES,
   confirmedJobValuesSchema,
@@ -45,22 +57,113 @@ function parseCursor(value?: string) {
   }
 }
 
+function parseScoreCursor(value?: string) {
+  if (!value) return undefined;
+  if (value.length > 500 || !/^[A-Za-z0-9_-]+$/.test(value)) {
+    throw new DomainError("The Jobs cursor is invalid.", "INVALID_INPUT");
+  }
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as unknown;
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new Error();
+    const valueObject = parsed as Record<string, unknown>;
+    if (
+      Object.keys(valueObject).sort().join(",") !==
+      "confirmedAt,coverage,id,score".split(",").sort().join(",")
+    ) {
+      throw new Error();
+    }
+    const date = new Date(String(valueObject.confirmedAt));
+    const score = valueObject.score;
+    const coverage = valueObject.coverage;
+    if (
+      typeof valueObject.id !== "string" ||
+      valueObject.id.length > 100 ||
+      Number.isNaN(date.getTime()) ||
+      !(
+        score === null ||
+        (typeof score === "number" && Number.isInteger(score) && score >= 0 && score <= 100)
+      ) ||
+      !(
+        coverage === null ||
+        (typeof coverage === "number" &&
+          Number.isInteger(coverage) &&
+          coverage >= 0 &&
+          coverage <= 100)
+      ) ||
+      (score === null) !== (coverage === null)
+    ) {
+      throw new Error();
+    }
+    return { score, coverage, confirmedAt: date, id: valueObject.id };
+  } catch {
+    throw new DomainError("The Jobs cursor is invalid.", "INVALID_INPUT");
+  }
+}
+
 export async function listJobs(
   userId: string,
   input: Omit<JobListFilters, "cursor"> & {
     cursor?: string;
     filterOutcome?: JobFilterOutcome | "STALE_OR_MISSING";
+    scoreSort?: boolean;
+    minimumScore?: number;
+    maximumScore?: number;
+    excludeHardFilterFails?: boolean;
   } = {},
 ) {
   const pageSize = Math.min(input.pageSize ?? 25, 50);
-  const [records, filterProfile] = await Promise.all([
-    listJobRecords(userId, {
-      ...input,
-      cursor: parseCursor(input.cursor),
-      pageSize,
-    }),
+  const [filterProfile, scoringProfile] = await Promise.all([
     viewJobFilterProfile(userId),
+    viewJobScoringProfile(userId),
   ]);
+  const ranked =
+    Boolean(input.scoreSort) ||
+    input.minimumScore !== undefined ||
+    input.maximumScore !== undefined ||
+    Boolean(input.excludeHardFilterFails);
+  if (ranked && scoringProfile) {
+    const rows = await listRankedJobRecords(userId, {
+      status: input.status ?? "ACTIVE",
+      employmentType: input.employmentType,
+      workplaceArrangement: input.workplaceArrangement,
+      query: input.query,
+      consideration: input.consideration,
+      minimumScore: input.minimumScore,
+      maximumScore: input.maximumScore,
+      filterOutcome: input.filterOutcome,
+      excludeHardFilterFails: input.excludeHardFilterFails,
+      scoringProfileVersion: scoringProfile.version,
+      scoringRuleSetVersion: JOB_SCORING_RULE_SET_VERSION,
+      filterProfileVersion: filterProfile?.version,
+      filterRuleSetVersion: JOB_FILTER_RULE_SET_VERSION,
+      cursor: parseScoreCursor(input.cursor),
+      pageSize,
+    });
+    const hasNext = rows.length > pageSize;
+    const page = rows.slice(0, pageSize);
+    const last = hasNext ? page.at(-1) : undefined;
+    return {
+      items: page.map((row) => row.record),
+      filterProfile,
+      scoringProfile,
+      nextCursor: last
+        ? Buffer.from(
+            JSON.stringify({
+              score: last.rank.freshScore,
+              coverage: last.rank.freshCoverage,
+              confirmedAt: last.rank.confirmedAt.toISOString(),
+              id: last.rank.id,
+            }),
+            "utf8",
+          ).toString("base64url")
+        : undefined,
+    };
+  }
+  const records = await listJobRecords(userId, {
+    ...input,
+    cursor: parseCursor(input.cursor),
+    pageSize,
+  });
   const hasNext = records.length > pageSize;
   const page = records.slice(0, pageSize);
   const items = input.filterOutcome
@@ -75,6 +178,7 @@ export async function listJobs(
   return {
     items,
     filterProfile,
+    scoringProfile,
     nextCursor: last
       ? Buffer.from(
           JSON.stringify({ confirmedAt: last.confirmedAt.toISOString(), id: last.id }),
@@ -131,6 +235,7 @@ export async function updateJob(
     });
     await refreshDuplicateStateForJob(tx, userId, updated.id);
     await evaluateJobHardFiltersInTransaction(tx, userId, updated.id, userId);
+    await scoreJobInTransaction(tx, userId, updated.id, userId);
     await recordAudit(tx, {
       userId,
       entityType: "JOB",
@@ -173,6 +278,7 @@ export async function transitionJob(userId: string, id: string, untrustedInput: 
     await refreshDuplicateStateForJob(tx, userId, updated.id);
     if (targetStatus === "ACTIVE") {
       await evaluateJobHardFiltersInTransaction(tx, userId, updated.id, userId);
+      await scoreJobInTransaction(tx, userId, updated.id, userId);
     }
     await recordAudit(tx, {
       userId,

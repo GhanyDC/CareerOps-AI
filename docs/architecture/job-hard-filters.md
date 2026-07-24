@@ -117,13 +117,13 @@ metadata; complete historical explanations are not retained. Profile creates and
 the existing `AuditLog` convention. Database checks enforce known schema versions, valid hashes,
 positive versions, bounded JSON, explanation/outcome agreement, and actor ownership.
 
-## Explicit exclusions and future scoring
+## Explicit exclusions and separate scoring
 
-This slice adds no scoring, severity, weights, ranking, requirement-to-evidence matching, Candidate
+The Hard Filter module adds no scoring, severity, weights, ranking, requirement-to-evidence matching, Candidate
 Evidence retrieval, RAG, embeddings, vector search, LLM call, resume or cover-letter tailoring,
 application tracking or submission, scraping, URL fetching, enrichment, salary benchmarking,
 external API, n8n runtime, worker, scheduler, or autonomous workflow.
 
-Future scoring may consume authoritative Job data in a separately reviewed increment, but it must
-remain distinct from these binary/tri-state hard constraints. A hard-filter result must not be
-silently reinterpreted as a score or automatic Job mutation.
+The separately documented [Preliminary Job Scoring](preliminary-job-scoring.md) module consumes
+authoritative structured Job data but remains distinct from these binary/tri-state hard
+constraints. A hard-filter result is never reinterpreted as a score or automatic Job mutation.

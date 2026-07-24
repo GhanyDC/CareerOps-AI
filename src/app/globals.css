@@ -343,6 +343,10 @@ p {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.three-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .field {
   display: grid;
   gap: 0.4rem;
@@ -459,7 +463,8 @@ legend {
 
 .status-verified,
 .status-approved,
-.status-pass {
+.status-pass,
+.status-available {
   background: #e3f4e9;
   color: #23613b;
 }
@@ -478,13 +483,18 @@ legend {
 
 .status-needs_review,
 .status-stale,
-.status-not_evaluated {
+.status-not_evaluated,
+.status-stale_score,
+.status-not_scored,
+.status-missing,
+.status-incomparable {
   background: #fff3d6;
   color: #765514;
 }
 
 .status-not_configured,
 .status-filters_not_configured,
+.status-scoring_not_configured,
 .status-disabled {
   background: #e7e9ec;
   color: #555e66;
@@ -498,6 +508,28 @@ legend {
 .status-development_only {
   background: #fff3d6;
   color: #765514;
+}
+
+.score-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.36rem 0.65rem;
+  border: 1px solid #b8d9c5;
+  border-radius: 999px;
+  background: #e8f6ed;
+  color: #245c3b;
+  white-space: nowrap;
+}
+
+.score-badge strong {
+  font-size: 0.92rem;
+}
+
+.score-badge span {
+  font-size: 0.68rem;
+  font-weight: 750;
 }
 
 .claim-prohibited {
@@ -699,6 +731,7 @@ dd {
 
 @media (max-width: 640px) {
   .two-columns,
+  .three-columns,
   .filter-bar {
     grid-template-columns: 1fr;
   }

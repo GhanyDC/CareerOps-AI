@@ -37,6 +37,26 @@ export default async function Dashboard() {
       summary.jobFilters.staleOrMissing,
       "/jobs?view=CONSIDERATION&filterOutcome=STALE_OR_MISSING",
     ],
+    [
+      "Score: 80–100",
+      summary.jobScoring.high,
+      "/jobs?view=CONSIDERATION&sort=SCORE_DESC&minimumScore=80",
+    ],
+    [
+      "Score: 60–79",
+      summary.jobScoring.medium,
+      "/jobs?view=CONSIDERATION&sort=SCORE_DESC&minimumScore=60&maximumScore=79",
+    ],
+    [
+      "Score: 0–59",
+      summary.jobScoring.low,
+      "/jobs?view=CONSIDERATION&sort=SCORE_DESC&maximumScore=59",
+    ],
+    [
+      "Score: stale or missing",
+      summary.jobScoring.staleOrMissing,
+      "/jobs?view=CONSIDERATION&sort=SCORE_DESC",
+    ],
   ] as const;
 
   return (
@@ -85,6 +105,17 @@ export default async function Dashboard() {
           Job Hard Filters are not configured. <Link href="/jobs/filters">Configure filters</Link>.
         </section>
       ) : null}
+      {!summary.jobScoring.configured ? (
+        <section className="notice">
+          Preliminary Job Scoring is not configured.{" "}
+          <Link href="/jobs/scoring">Configure scoring</Link>.
+        </section>
+      ) : (
+        <section className="notice">
+          Average covered preliminary score: {summary.jobScoring.averageScore}/100. Scores reflect
+          preferences only, not qualification.
+        </section>
+      )}
     </div>
   );
 }
