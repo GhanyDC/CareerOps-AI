@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma } from "@/server/db/client";
 import { getJobFilterDashboardSummary } from "@/modules/job-hard-filters/public.server";
+import { getJobScoringDashboardSummary } from "@/modules/job-scoring/public.server";
 
 export async function getDashboardSummary(userId: string) {
   const [
@@ -34,7 +35,10 @@ export async function getDashboardSummary(userId: string) {
       },
     }),
   ]);
-  const jobFilters = await getJobFilterDashboardSummary(userId);
+  const [jobFilters, jobScoring] = await Promise.all([
+    getJobFilterDashboardSummary(userId),
+    getJobScoringDashboardSummary(userId),
+  ]);
 
   return {
     experiences,
@@ -48,5 +52,6 @@ export async function getDashboardSummary(userId: string) {
     activeJobs,
     pendingDuplicateReviews,
     jobFilters,
+    jobScoring,
   };
 }

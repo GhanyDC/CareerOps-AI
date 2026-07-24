@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 
 import { CreateParseDraftForm } from "@/components/create-parse-draft-form";
 import { JobForm } from "@/components/job-form";
+import { JobScoringResult } from "@/components/job-scoring-result";
 import { JobStatusActions } from "@/components/job-status-actions";
 import { JobFilterResult } from "@/components/job-filter-result";
 import { ReevaluateJobFilterForm } from "@/components/reevaluate-job-filter-form";
+import { RescoreJobForm } from "@/components/rescore-job-form";
 import { StatusBadge } from "@/components/status-badge";
 import { DomainError } from "@/modules/shared/errors";
 import { humanizeEnum } from "@/modules/shared/presentation";
@@ -15,6 +17,10 @@ import {
   isJobFilterEvaluationFresh,
   viewJobFilterEvaluation,
 } from "@/modules/job-hard-filters/public.server";
+import {
+  isPreliminaryJobScoreFresh,
+  viewJobPreliminaryScore,
+} from "@/modules/job-scoring/public.server";
 import { getRequestContext } from "@/server/request-context";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +35,7 @@ export default async function JobDetailPage({
     saved?: string;
     transitioned?: string;
     filterEvaluated?: string;
+    scored?: string;
   }>;
 }) {
   const [{ id }, query, { userId }] = await Promise.all([
@@ -43,8 +50,12 @@ export default async function JobDetailPage({
     if (error instanceof DomainError && error.code === "JOB_NOT_FOUND") notFound();
     throw error;
   }
-  const filterState = await viewJobFilterEvaluation(userId, id);
+  const [filterState, scoringState] = await Promise.all([
+    viewJobFilterEvaluation(userId, id),
+    viewJobPreliminaryScore(userId, id),
+  ]);
   const filterFresh = isJobFilterEvaluationFresh(filterState.profile, job, filterState.evaluation);
+  const scoreFresh = isPreliminaryJobScoreFresh(scoringState.profile, job, scoringState.score);
   return (
     <div className="page-stack">
       <div className="page-heading">
@@ -64,6 +75,9 @@ export default async function JobDetailPage({
       {query.transitioned ? <div className="notice success">Job status updated.</div> : null}
       {query.filterEvaluated ? (
         <div className="notice success">Hard filters reevaluated against the current Job.</div>
+      ) : null}
+      {query.scored ? (
+        <div className="notice success">Preliminary preferences rescored for this Job.</div>
       ) : null}
       {job.duplicateGroupMembership ? (
         <div className="notice">
@@ -85,6 +99,38 @@ export default async function JobDetailPage({
         </div>
       ) : null}
       <JobStatusActions id={job.id} status={job.status} version={job.version} />
+      {!scoringState.profile ? (
+        <div className="notice">
+          Preliminary scoring is not configured.{" "}
+          <Link href="/jobs/scoring">Configure Job Scoring</Link>.
+        </div>
+      ) : scoringState.score ? (
+        <div className="page-stack">
+          {job.status === "ARCHIVED" ? (
+            <div className="notice">
+              This archived Job retains its last preliminary score but is excluded from active
+              ranking views and summaries.
+            </div>
+          ) : !scoreFresh ? (
+            <div className="notice">
+              This preliminary score is stale because the Job, scoring profile, or rule-set version
+              changed.
+            </div>
+          ) : null}
+          <JobScoringResult explanation={scoringState.score.explanation} />
+          <p>Last scored {scoringState.score.scoredAt.toLocaleString()}</p>
+          {job.status === "ACTIVE" ? <RescoreJobForm jobId={job.id} /> : null}
+        </div>
+      ) : (
+        <div className="panel page-stack">
+          <div className="record-card-heading">
+            <h2>Preliminary preference score</h2>
+            <StatusBadge value="NOT_SCORED" />
+          </div>
+          <p>This Job has not been scored against the current preference profile.</p>
+          {job.status === "ACTIVE" ? <RescoreJobForm jobId={job.id} /> : null}
+        </div>
+      )}
       {!filterState.profile ? (
         <div className="notice">
           Filters not configured. <Link href="/jobs/filters">Configure Job Hard Filters</Link>.

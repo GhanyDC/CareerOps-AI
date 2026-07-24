@@ -1,7 +1,9 @@
 import Link from "next/link";
 
+import { JobScoreBadge } from "@/components/job-score-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { isJobFilterEvaluationFresh } from "@/modules/job-hard-filters/public.server";
+import { isPreliminaryJobScoreFresh } from "@/modules/job-scoring/public.server";
 import { listJobs } from "@/modules/jobs/use-cases";
 import { humanizeEnum } from "@/modules/shared/presentation";
 import { getRequestContext } from "@/server/request-context";
@@ -10,6 +12,12 @@ export const dynamic = "force-dynamic";
 
 function one(value: string | string[] | undefined) {
   return typeof value === "string" ? value : undefined;
+}
+
+function scoreBound(value: string | undefined) {
+  if (!value || !/^\d{1,3}$/u.test(value)) return undefined;
+  const parsed = Number(value);
+  return parsed >= 0 && parsed <= 100 ? parsed : undefined;
 }
 
 export default async function JobsPage({
@@ -36,12 +44,17 @@ export default async function JobsPage({
     (value) => value === one(query.workplaceArrangement),
   );
   const search = one(query.query)?.trim().slice(0, 200) || undefined;
-  const direction = one(query.sort) === "OLDEST" ? "asc" : "desc";
+  const sort = one(query.sort);
+  const direction = sort === "OLDEST" ? "asc" : "desc";
+  const scoreSort = sort === "SCORE_DESC";
+  const minimumScore = scoreBound(one(query.minimumScore));
+  const maximumScore = scoreBound(one(query.maximumScore));
   const outcomes = ["PASS", "FAIL", "NEEDS_REVIEW", "STALE_OR_MISSING"] as const;
   const filterOutcome = outcomes.find((value) => value === one(query.filterOutcome));
   const consideration = one(query.view) === "CONSIDERATION";
   const includeDuplicateMembers = one(query.includeDuplicateMembers) === "1";
-  const { items, nextCursor, filterProfile } = await listJobs(userId, {
+  const excludeHardFilterFails = one(query.excludeHardFilterFails) === "1";
+  const { items, nextCursor, filterProfile, scoringProfile } = await listJobs(userId, {
     status,
     employmentType,
     workplaceArrangement,
@@ -50,16 +63,24 @@ export default async function JobsPage({
     cursor: one(query.cursor),
     filterOutcome,
     consideration: consideration && !includeDuplicateMembers,
+    scoreSort,
+    minimumScore,
+    maximumScore,
+    excludeHardFilterFails: consideration && excludeHardFilterFails,
   });
   const next = new URLSearchParams();
   next.set("status", status);
   if (employmentType) next.set("employmentType", employmentType);
   if (workplaceArrangement) next.set("workplaceArrangement", workplaceArrangement);
   if (search) next.set("query", search);
-  if (direction === "asc") next.set("sort", "OLDEST");
+  if (scoreSort) next.set("sort", "SCORE_DESC");
+  else if (direction === "asc") next.set("sort", "OLDEST");
+  if (minimumScore !== undefined) next.set("minimumScore", String(minimumScore));
+  if (maximumScore !== undefined) next.set("maximumScore", String(maximumScore));
   if (filterOutcome) next.set("filterOutcome", filterOutcome);
   if (consideration) next.set("view", "CONSIDERATION");
   if (includeDuplicateMembers) next.set("includeDuplicateMembers", "1");
+  if (excludeHardFilterFails) next.set("excludeHardFilterFails", "1");
   if (nextCursor) next.set("cursor", nextCursor);
 
   return (
@@ -77,6 +98,9 @@ export default async function JobsPage({
         </Link>
         <Link className="button secondary" href="/jobs/filters">
           Hard filter settings
+        </Link>
+        <Link className="button secondary" href="/jobs/scoring">
+          Scoring settings
         </Link>
       </div>
       <form className="filter-bar" method="get">
@@ -124,6 +148,15 @@ export default async function JobsPage({
           />
           <span>Include duplicate members</span>
         </label>
+        <label className="checkbox-field">
+          <input
+            type="checkbox"
+            name="excludeHardFilterFails"
+            value="1"
+            defaultChecked={excludeHardFilterFails}
+          />
+          <span>Exclude current Hard Filter FAILs in consideration view</span>
+        </label>
         <select
           name="workplaceArrangement"
           defaultValue={workplaceArrangement ?? ""}
@@ -146,16 +179,41 @@ export default async function JobsPage({
         />
         <select
           name="sort"
-          defaultValue={direction === "asc" ? "OLDEST" : "NEWEST"}
-          aria-label="Confirmation order"
+          defaultValue={scoreSort ? "SCORE_DESC" : direction === "asc" ? "OLDEST" : "NEWEST"}
+          aria-label="Job sort"
         >
           <option value="NEWEST">Newest confirmed</option>
           <option value="OLDEST">Oldest confirmed</option>
+          <option value="SCORE_DESC">Highest preliminary score</option>
         </select>
+        <input
+          name="minimumScore"
+          type="number"
+          min={0}
+          max={100}
+          step={1}
+          defaultValue={minimumScore}
+          placeholder="Minimum score"
+          aria-label="Minimum preliminary score"
+        />
+        <input
+          name="maximumScore"
+          type="number"
+          min={0}
+          max={100}
+          step={1}
+          defaultValue={maximumScore}
+          placeholder="Maximum score"
+          aria-label="Maximum preliminary score"
+        />
         <button className="button secondary" type="submit">
           Filter
         </button>
       </form>
+      <div className="notice">
+        Preliminary score reflects Job preferences only. Hard Filter status remains a separate
+        eligibility signal; qualification and evidence matching are evaluated separately.
+      </div>
       <div className="record-list">
         {items.map((job) => (
           <Link className="record-card" href={`/jobs/${job.id}`} key={job.id}>
@@ -165,6 +223,23 @@ export default async function JobsPage({
                 <h2>{job.title}</h2>
               </div>
               <StatusBadge value={job.status} />
+              {job.status === "ARCHIVED" && job.preliminaryScore ? (
+                <JobScoreBadge
+                  score={job.preliminaryScore.score}
+                  coverage={job.preliminaryScore.coverage}
+                />
+              ) : !scoringProfile ? (
+                <StatusBadge value="SCORING_NOT_CONFIGURED" />
+              ) : isPreliminaryJobScoreFresh(scoringProfile, job, job.preliminaryScore) ? (
+                <JobScoreBadge
+                  score={job.preliminaryScore!.score}
+                  coverage={job.preliminaryScore!.coverage}
+                />
+              ) : job.preliminaryScore ? (
+                <StatusBadge value="STALE_SCORE" />
+              ) : (
+                <StatusBadge value="NOT_SCORED" />
+              )}
               {job.status === "ARCHIVED" && job.filterEvaluation ? (
                 <StatusBadge value={job.filterEvaluation.outcome} />
               ) : !filterProfile ? (
