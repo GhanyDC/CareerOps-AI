@@ -53,6 +53,7 @@ enum AuditEntityType {
   JOB_DUPLICATE_CANDIDATE
   JOB_DUPLICATE_GROUP
   JOB_FILTER_PROFILE
+  JOB_SCORING_PROFILE
 }
 
 enum AuditAction {
@@ -78,6 +79,8 @@ enum AuditAction {
   JOB_DUPLICATE_GROUP_CHANGED
   JOB_FILTER_PROFILE_CREATED
   JOB_FILTER_PROFILE_UPDATED
+  JOB_SCORING_PROFILE_CREATED
+  JOB_SCORING_PROFILE_UPDATED
 }
 
 enum DiscoveryImportMethod {
@@ -201,6 +204,13 @@ enum JobFilterEventType {
   JOB_REEVALUATED
 }
 
+enum JobScoringEventType {
+  PROFILE_CREATED
+  PROFILE_UPDATED
+  JOB_SCORED
+  JOB_RESCORED
+}
+
 enum UserStatus {
   ACTIVE
   SUSPENDED
@@ -257,6 +267,9 @@ model User {
   jobFilterProfile            JobFilterProfile?
   jobFilterEvaluations        JobFilterEvaluation[]
   jobFilterEvents             JobFilterEvent[]
+  jobScoringProfile           JobScoringProfile?
+  jobPreliminaryScores        JobPreliminaryScore[]
+  jobScoringEvents            JobScoringEvent[]
 }
 
 model AuthAccount {
@@ -612,6 +625,8 @@ model Job {
   duplicateGroupMembership JobDuplicateGroupMember?
   filterEvaluation         JobFilterEvaluation?
   filterEvents             JobFilterEvent[]
+  preliminaryScore         JobPreliminaryScore?
+  scoringEvents            JobScoringEvent[]
 
   @@unique([id, userId])
   @@index([userId, status, confirmedAt, id])
@@ -911,6 +926,73 @@ model JobFilterEvent {
   user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   profile JobFilterProfile @relation(fields: [profileId, userId], references: [id, userId], onDelete: Cascade)
   job     Job?             @relation(fields: [jobId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@index([userId, profileId, createdAt])
+  @@index([userId, jobId, createdAt])
+}
+
+model JobScoringProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  configuration     Json
+  configurationHash String   @db.Char(64)
+  version           Int      @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scores JobPreliminaryScore[]
+  events JobScoringEvent[]
+
+  @@unique([id, userId])
+}
+
+model JobPreliminaryScore {
+  id                    String   @id @default(cuid())
+  userId                String
+  profileId             String
+  jobId                 String
+  score                 Int
+  coverage              Int
+  ruleSetVersion        Int
+  scoringProfileVersion Int
+  configurationHash     String   @db.Char(64)
+  sourceJobVersion      Int
+  explanation           Json
+  explanationHash       String   @db.Char(64)
+  scoredAt              DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile JobScoringProfile @relation(fields: [profileId, userId], references: [id, userId], onDelete: Cascade)
+  job     Job               @relation(fields: [jobId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([id, userId])
+  @@unique([jobId, userId])
+  @@index([userId, score, coverage, updatedAt, id])
+  @@index([userId, scoringProfileVersion, score])
+}
+
+model JobScoringEvent {
+  id                    String              @id @default(cuid())
+  userId                String
+  profileId             String
+  jobId                 String?
+  eventType             JobScoringEventType
+  actorUserId           String?
+  previousScore         Int?
+  newScore              Int?
+  previousCoverage      Int?
+  newCoverage           Int?
+  scoringProfileVersion Int
+  sourceJobVersion      Int?
+  safeMetadata          Json
+  createdAt             DateTime            @default(now())
+
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile JobScoringProfile @relation(fields: [profileId, userId], references: [id, userId], onDelete: Cascade)
+  job     Job?              @relation(fields: [jobId, userId], references: [id, userId], onDelete: Cascade)
 
   @@index([userId, profileId, createdAt])
   @@index([userId, jobId, createdAt])
