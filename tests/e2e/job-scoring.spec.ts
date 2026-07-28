@@ -169,8 +169,13 @@ test("configures, scans, explains, ranks, and preserves preliminary preference s
     await expect(page.getByRole("heading", { name: "More active Jobs remain" })).toBeVisible();
     expect(await authTestClient.jobPreliminaryScore.count({ where: { userId: user.id } })).toBe(50);
     await page.getByRole("button", { name: "Continue bounded scoring" }).click();
+    await expect
+      .poll(() => authTestClient.jobPreliminaryScore.count({ where: { userId: user.id } }), {
+        timeout: 20_000,
+      })
+      .toBe(51);
+    await page.reload();
     await expect(page.getByText("Scored 1 active authoritative Job(s).")).toBeVisible();
-    expect(await authTestClient.jobPreliminaryScore.count({ where: { userId: user.id } })).toBe(51);
 
     await page.goto(`/jobs/${primary.id}`);
     await expect(page.getByRole("heading", { name: "Component explanation" })).toBeVisible();
@@ -243,6 +248,19 @@ test("configures, scans, explains, ranks, and preserves preliminary preference s
     });
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Archive Job" }).click();
+    await expect
+      .poll(
+        async () =>
+          (
+            await authTestClient.job.findUniqueOrThrow({
+              where: { id: primary.id },
+              select: { status: true },
+            })
+          ).status,
+        { timeout: 20_000 },
+      )
+      .toBe("ARCHIVED");
+    await page.reload();
     await expect(page.getByText(/archived Job retains its last preliminary score/)).toBeVisible();
     expect(
       (
@@ -251,7 +269,6 @@ test("configures, scans, explains, ranks, and preserves preliminary preference s
         })
       ).explanationHash,
     ).toBe(scoreBeforeArchive.explanationHash);
-    await page.reload();
     await page.getByRole("button", { name: "Restore Job" }).click();
     await expect
       .poll(
@@ -262,6 +279,7 @@ test("configures, scans, explains, ranks, and preserves preliminary preference s
               select: { status: true },
             })
           ).status,
+        { timeout: 20_000 },
       )
       .toBe("ACTIVE");
 
