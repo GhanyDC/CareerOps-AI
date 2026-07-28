@@ -17,6 +17,10 @@ import {
 import { recordAudit } from "@/modules/audit/public.server";
 import { findOwnedExperienceSource } from "@/modules/experiences/public.server";
 import { findOwnedProjectSource } from "@/modules/projects/public.server";
+import {
+  recordEvidenceDeletionInTransaction,
+  recordEvidenceVersionChangeInTransaction,
+} from "@/modules/requirement-matching/public.server";
 import { DomainError } from "@/modules/shared/errors";
 import { runSerializableTransaction } from "@/server/db/transaction";
 
@@ -58,7 +62,18 @@ export async function updateEvidenceItem(userId: string, id: string, untrustedIn
       );
     }
 
-    return tx.evidenceItem.update({ where: { id_userId: { id, userId } }, data: input });
+    const updated = await tx.evidenceItem.update({
+      where: { id_userId: { id, userId } },
+      data: { ...input, version: { increment: 1 } },
+    });
+    await recordEvidenceVersionChangeInTransaction(
+      tx,
+      userId,
+      id,
+      evidence.version,
+      updated.version,
+    );
+    return updated;
   });
 }
 
@@ -100,8 +115,15 @@ export async function transitionEvidenceStatus(
 
     const updated = await tx.evidenceItem.update({
       where: { id_userId: { id, userId } },
-      data: { verificationStatus: targetStatus },
+      data: { verificationStatus: targetStatus, version: { increment: 1 } },
     });
+    await recordEvidenceVersionChangeInTransaction(
+      tx,
+      userId,
+      id,
+      evidence.version,
+      updated.version,
+    );
 
     await dependencies.recordAudit(tx, {
       userId,
@@ -169,6 +191,7 @@ export async function deleteEvidenceItem(userId: string, id: string) {
       );
     }
 
+    await recordEvidenceDeletionInTransaction(tx, userId, id, evidence.version);
     return tx.evidenceItem.delete({ where: { id_userId: { id, userId } } });
   });
 }

@@ -3,6 +3,7 @@ import "server-only";
 import { prisma } from "@/server/db/client";
 import { getJobFilterDashboardSummary } from "@/modules/job-hard-filters/public.server";
 import { getJobScoringDashboardSummary } from "@/modules/job-scoring/public.server";
+import { getActiveRequirementCoverageSummary } from "@/modules/requirement-matching/public.server";
 
 export async function getDashboardSummary(userId: string) {
   const [
@@ -35,9 +36,10 @@ export async function getDashboardSummary(userId: string) {
       },
     }),
   ]);
-  const [jobFilters, jobScoring] = await Promise.all([
+  const [jobFilters, jobScoring, requirementMatching] = await Promise.all([
     getJobFilterDashboardSummary(userId),
     getJobScoringDashboardSummary(userId),
+    getActiveRequirementCoverageSummary(userId),
   ]);
 
   return {
@@ -53,5 +55,6 @@ export async function getDashboardSummary(userId: string) {
     pendingDuplicateReviews,
     jobFilters,
     jobScoring,
+    requirementMatching,
   };
 }
