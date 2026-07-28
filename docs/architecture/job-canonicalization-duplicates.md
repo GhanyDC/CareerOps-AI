@@ -61,3 +61,9 @@ embeddings, tailoring, application tracking, scraping, URL fetching, company enr
 API, n8n runtime workflow, or application submission. Separate reviewed Hard Filter and
 Preliminary Job Scoring modules use authoritative Jobs and duplicate-primary projections without
 changing canonicalization decisions. Application submission remains manual.
+
+Requirement matching follows the same non-destructive duplicate boundary. Every Job and duplicate
+member owns independent requirements, evidence links, and reviews; none are copied or consolidated
+from the primary. Active coverage summaries may collapse to the explicit active primary and expose
+an include-members control, but primary changes do not mutate member matches or promote another Job.
+See [Requirement-to-Evidence Matching](requirement-evidence-matching.md).

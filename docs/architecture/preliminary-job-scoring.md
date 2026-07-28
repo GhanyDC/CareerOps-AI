@@ -130,14 +130,16 @@ changes and score transitions with version coordinates, prior/current score and 
 reason codes, and hashes rather than full historical explanations. Hard deletion of an owning user
 or Job cascades current scoring storage. Product soft deletion preserves authoritative history.
 
-## Scope exclusions and future evidence matching
+## Scope exclusions and evidence matching
 
-This slice adds no Candidate Evidence retrieval, requirement-to-evidence matching, qualification or
-skill assessment, RAG, embeddings, vector search, LLM call, resume or cover-letter tailoring,
+This scoring module adds no Candidate Evidence retrieval, qualification or skill assessment, RAG,
+embeddings, vector search, LLM call, resume or cover-letter tailoring,
 company enrichment, salary benchmarking, currency conversion, external API, scraping, URL fetch,
 application tracking, application submission, worker, scheduler, n8n runtime behavior, autonomous
 workflow, or automatic Job mutation.
 
-A future reviewed increment may compare Job requirements with Candidate Evidence. That later
-evidence-grounded assessment must remain distinct from both soft preference scoring and Hard Filter
-eligibility.
+The separately documented
+[Requirement-to-Evidence Matching](requirement-evidence-matching.md) workflow records full,
+partial, unsupported, and not-reviewed evidence states with independent freshness. Its factual
+coverage counts are never combined with, weighted into, or described as the Preliminary Job Score,
+and remain distinct from Hard Filter eligibility.
