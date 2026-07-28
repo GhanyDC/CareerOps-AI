@@ -464,7 +464,9 @@ legend {
 .status-verified,
 .status-approved,
 .status-pass,
-.status-available {
+.status-available,
+.status-supported,
+.status-full {
   background: #e3f4e9;
   color: #23613b;
 }
@@ -476,7 +478,8 @@ legend {
 
 .status-rejected,
 .status-prohibited,
-.status-fail {
+.status-fail,
+.status-unsupported {
   background: #fde6e6;
   color: #8a2929;
 }
@@ -488,6 +491,13 @@ legend {
 .status-not_scored,
 .status-missing,
 .status-incomparable {
+  background: #fff3d6;
+  color: #765514;
+}
+
+.status-partially_supported,
+.status-partial,
+.status-not_reviewed {
   background: #fff3d6;
   color: #765514;
 }
