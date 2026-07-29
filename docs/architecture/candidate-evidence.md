@@ -44,6 +44,22 @@ The product prevents deletion of an experience or project with active evidence. 
 
 All server mutation actions use the shared safe error boundary. Known validation and domain messages remain actionable. Unexpected errors are represented by a generic message and correlation ID; raw errors, form values, Prisma metadata, connection details, and request secrets are not logged by the application boundary.
 
+## Requirement matching lifecycle
+
+Requirement-to-Evidence Matching links authorized `EvidenceItem` records without copying their
+claims, supporting context, source notes, or source provenance. Every evidence edit and verification
+transition advances `EvidenceItem.version`, so a completed requirement review that used an earlier
+version becomes visibly stale while preserving the link.
+
+Evidence deletion remains blocked while claims depend on it. When deletion is otherwise allowed,
+requirement links are removed before compact deletion events are written in the same serializable
+transaction. Requirements and their last review remain, the link-set coordinate advances, and
+compact events/audits retain only IDs, post-mutation versions, support level, and the fixed
+evidence-deleted reason. See
+[Requirement-to-Evidence Matching](requirement-evidence-matching.md).
+
 ## Deferred integrations
 
-This system is designed to support job requirement matching, RAG retrieval, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages. None are implemented in this increment. Automatic application submission is prohibited.
+This system now supports explicit Job requirement matching. Grounded RAG retrieval, fit
+explanation, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages
+remain deferred. Automatic application submission is prohibited.

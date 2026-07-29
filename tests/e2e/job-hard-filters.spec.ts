@@ -232,12 +232,24 @@ test("configures, scans, explains, filters, and retains informational Job result
     });
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Archive Job" }).click();
+    await expect
+      .poll(
+        async () =>
+          (
+            await authTestClient.job.findUniqueOrThrow({
+              where: { id: primary.id },
+              select: { status: true },
+            })
+          ).status,
+        { timeout: 20_000 },
+      )
+      .toBe("ARCHIVED");
+    await page.reload();
     await expect(page.getByText(/archived Job retains its last result/)).toBeVisible();
     const retained = await authTestClient.jobFilterEvaluation.findUniqueOrThrow({
       where: { jobId_userId: { jobId: primary.id, userId: user.id } },
     });
     expect(retained.explanationHash).toBe(evaluationBeforeArchive.explanationHash);
-    await page.reload();
     await expect(page.getByRole("button", { name: "Restore Job" })).toBeVisible();
     await page.getByRole("button", { name: "Restore Job" }).click();
     await expect(page.locator(".notice.error")).toHaveCount(0);

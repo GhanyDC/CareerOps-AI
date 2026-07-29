@@ -102,6 +102,9 @@ export default async function JobsPage({
         <Link className="button secondary" href="/jobs/scoring">
           Scoring settings
         </Link>
+        <Link className="button secondary" href="/jobs/requirements">
+          Requirement coverage
+        </Link>
       </div>
       <form className="filter-bar" method="get">
         <select name="status" defaultValue={status} aria-label="Job status">

@@ -39,12 +39,13 @@ export async function transitionJobAction(
   formData: FormData,
 ): Promise<ActionState> {
   const id = readString(formData, "id");
+  const targetStatus = readString(formData, "targetStatus");
   try {
     const { userId } = await getMutationRequestContext();
     if (!id) throw new Error("Missing Job identifier");
     await transitionJob(userId, id, {
       expectedVersion: readString(formData, "expectedVersion"),
-      targetStatus: readString(formData, "targetStatus"),
+      targetStatus,
     });
     revalidatePath("/");
     revalidatePath("/jobs");
@@ -52,5 +53,5 @@ export async function transitionJobAction(
   } catch (error) {
     return toActionError(error, "jobs.transition");
   }
-  redirect(`/jobs/${id}?transitioned=1`);
+  redirect(`/jobs/${id}?transitioned=${targetStatus}`);
 }

@@ -61,7 +61,3 @@ export function getEvidenceItem(userId: string, id: string) {
 export function createEvidenceRecord(userId: string, input: EvidenceInput) {
   return prisma.evidenceItem.create({ data: { userId, ...input } });
 }
-
-export function updateEvidenceRecord(userId: string, id: string, input: EvidenceInput) {
-  return prisma.evidenceItem.update({ where: { id_userId: { id, userId } }, data: input });
-}

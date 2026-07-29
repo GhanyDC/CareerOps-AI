@@ -48,10 +48,22 @@ keys are cleared, and redaction timestamps, events, and audits are written. The 
 Job remains visible so the user can explicitly retain or clear its fields. A purged source cannot be
 reparsed.
 
+## Requirement authority after confirmation
+
+Job confirmation and reparse do not create, replace, or delete atomic requirements. Confirmed
+responsibility, qualification, preferred-qualification, and skill arrays may be shown as candidates
+in the matching workflow, but each `JobRequirement` requires a separate explicit user submission.
+A structured-field provenance classification must exactly match the current authoritative field.
+Reparse preserves requirements and evidence links; only an explicit requirement edit changes the
+requirement version and stales its review. See
+[Requirement-to-Evidence Matching](requirement-evidence-matching.md).
+
 ## Deferred work
 
-Parsing itself performs no scoring, ranking, hard filtering, requirement matching, candidate fit,
+Parsing itself performs no scoring, ranking, hard filtering, candidate fit,
 RAG, embeddings, resume or cover-letter generation, application tracking, scraping, URL fetching,
 background parsing, n8n runtime workflow, or application submission. Separate reviewed Hard Filter
-and Preliminary Job Scoring modules consume only confirmed authoritative fields. Requirement
-matching and the remaining capabilities stay deferred. Application submission remains manual.
+and Preliminary Job Scoring modules consume only confirmed authoritative fields. The separate
+Requirement-to-Evidence Matching module consumes only explicitly confirmed requirements and owned
+Candidate Evidence. The remaining capabilities stay deferred. Application submission remains
+manual.

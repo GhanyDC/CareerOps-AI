@@ -7,6 +7,7 @@ import { JobScoringResult } from "@/components/job-scoring-result";
 import { JobStatusActions } from "@/components/job-status-actions";
 import { JobFilterResult } from "@/components/job-filter-result";
 import { ReevaluateJobFilterForm } from "@/components/reevaluate-job-filter-form";
+import { RequirementMatchingSection } from "@/components/requirement-matching-section";
 import { RescoreJobForm } from "@/components/rescore-job-form";
 import { StatusBadge } from "@/components/status-badge";
 import { DomainError } from "@/modules/shared/errors";
@@ -21,6 +22,7 @@ import {
   isPreliminaryJobScoreFresh,
   viewJobPreliminaryScore,
 } from "@/modules/job-scoring/public.server";
+import { viewJobRequirementMatching } from "@/modules/requirement-matching/public.server";
 import { getRequestContext } from "@/server/request-context";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +38,9 @@ export default async function JobDetailPage({
     transitioned?: string;
     filterEvaluated?: string;
     scored?: string;
+    requirementCreated?: string;
+    requirementTransitioned?: string;
+    requirementMoved?: string;
   }>;
 }) {
   const [{ id }, query, { userId }] = await Promise.all([
@@ -50,10 +55,11 @@ export default async function JobDetailPage({
     if (error instanceof DomainError && error.code === "JOB_NOT_FOUND") notFound();
     throw error;
   }
-  const [filterState, scoringState] = await Promise.all([
-    viewJobFilterEvaluation(userId, id),
-    viewJobPreliminaryScore(userId, id),
-  ]);
+  // These projections share the process-wide PostgreSQL adapter. Read them sequentially so
+  // server-action revalidation cannot overlap queries on one checked-out client.
+  const filterState = await viewJobFilterEvaluation(userId, id);
+  const scoringState = await viewJobPreliminaryScore(userId, id);
+  const requirementMatching = await viewJobRequirementMatching(userId, id);
   const filterFresh = isJobFilterEvaluationFresh(filterState.profile, job, filterState.evaluation);
   const scoreFresh = isPreliminaryJobScoreFresh(scoringState.profile, job, scoringState.score);
   return (
@@ -78,6 +84,15 @@ export default async function JobDetailPage({
       ) : null}
       {query.scored ? (
         <div className="notice success">Preliminary preferences rescored for this Job.</div>
+      ) : null}
+      {query.requirementCreated ? (
+        <div className="notice success">Authoritative requirement created.</div>
+      ) : null}
+      {query.requirementTransitioned ? (
+        <div className="notice success">Requirement state updated.</div>
+      ) : null}
+      {query.requirementMoved ? (
+        <div className="notice success">Requirement order updated.</div>
       ) : null}
       {job.duplicateGroupMembership ? (
         <div className="notice">
@@ -161,6 +176,7 @@ export default async function JobDetailPage({
           {job.status === "ACTIVE" ? <ReevaluateJobFilterForm jobId={job.id} /> : null}
         </div>
       )}
+      <RequirementMatchingSection job={requirementMatching} />
       <section className="panel">
         <h2>Confirmation summary</h2>
         <dl className="details-list">

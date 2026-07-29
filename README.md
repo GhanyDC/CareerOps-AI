@@ -25,6 +25,12 @@ primary-collapsed ranking projections. It uses only structured salary, employmen
 arrangement, and country fields; Hard Filter eligibility remains a separate signal. See
 [Preliminary Job Scoring architecture](docs/architecture/preliminary-job-scoring.md).
 
+Requirement-to-Evidence Matching adds an explicitly user-confirmed atomic requirement ledger,
+full and partial Candidate Evidence links, server-derived review states, version-coordinate
+freshness, compact audits/events, and factual required/preferred coverage counts. It does not infer
+qualification or create another score. See
+[Requirement-to-Evidence Matching architecture](docs/architecture/requirement-evidence-matching.md).
+
 ## Operating model
 
 - ChatGPT Work discovers opportunities, performs contextual analysis, and drafts application materials.
@@ -117,6 +123,12 @@ Use Prisma migrations, never `prisma db push`, for project schema changes. The d
 - **Evidence verification:** `Draft`, `Requires verification`, `Verified`, or `Rejected`.
 - **Evidence strength:** `Direct`, `Transferable`, `Supporting`, or `Weak`.
 - **Claim-bank item:** controlled wording marked `Draft`, `Requires verification`, `Approved`, `Prohibited`, or `Archived`.
+- **Job requirement:** one user-confirmed atomic requirement with explicit category, importance,
+  provenance classification, and independent version.
+- **Requirement match:** one or more explicit full/partial Candidate Evidence links plus a
+  completed, server-derived review snapshot. No completed review remains `Not reviewed`; a
+  completed review with no links means only `Unsupported: no supporting evidence is currently
+recorded`.
 
 Only an explicit user action can approve a claim, and approval requires linked verified evidence. Prohibited claims remain visible in history and must never enter later export packages. Important evidence and claim transitions write compact audit entries containing only status-relevant values.
 
@@ -167,6 +179,12 @@ Automated tests do not contact Google. Complete the [manual Google OAuth smoke t
 
 ## Deferred product phases
 
-This evidence system will later support job requirement matching, RAG retrieval, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages. Those features, additional authentication providers, n8n runtime integration, application tracking, scraping, and agent workflows remain deferred to separately reviewed increments. Job Hard Filters are deterministic eligibility constraints and remain separate from preliminary preference scoring.
+This evidence system now supports explicit Job requirement matching. Grounded RAG retrieval, fit
+explanation, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages
+remain deferred to separately reviewed increments. Additional authentication providers, n8n
+runtime integration, application tracking, scraping, and agent workflows also remain deferred. Job
+Hard Filters are deterministic eligibility constraints and remain separate from preliminary
+preference scoring and factual requirement coverage.
 
-Automatic job-application submission remains prohibited. Evidence matching, scraping, and application tracking remain deferred.
+Automatic job-application submission remains prohibited. Scraping and application tracking remain
+deferred.

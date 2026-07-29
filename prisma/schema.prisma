@@ -50,6 +50,7 @@ enum AuditEntityType {
   CLAIM
   DISCOVERY_IMPORT_BATCH
   JOB
+  JOB_REQUIREMENT
   JOB_DUPLICATE_CANDIDATE
   JOB_DUPLICATE_GROUP
   JOB_FILTER_PROFILE
@@ -75,6 +76,15 @@ enum AuditAction {
   JOB_ARCHIVED
   JOB_RESTORED
   JOB_SOURCE_PRIVACY_REDACTED
+  JOB_REQUIREMENT_CREATED
+  JOB_REQUIREMENT_UPDATED
+  JOB_REQUIREMENT_REORDERED
+  JOB_REQUIREMENT_ARCHIVED
+  JOB_REQUIREMENT_RESTORED
+  JOB_REQUIREMENT_EVIDENCE_LINKED
+  JOB_REQUIREMENT_EVIDENCE_LINK_UPDATED
+  JOB_REQUIREMENT_EVIDENCE_UNLINKED
+  JOB_REQUIREMENT_REVIEW_COMPLETED
   JOB_DUPLICATE_DECISION_RECORDED
   JOB_DUPLICATE_GROUP_CHANGED
   JOB_FILTER_PROFILE_CREATED
@@ -211,6 +221,60 @@ enum JobScoringEventType {
   JOB_RESCORED
 }
 
+enum JobRequirementCategory {
+  SKILL
+  EXPERIENCE
+  EDUCATION
+  CERTIFICATION
+  RESPONSIBILITY
+  DOMAIN_KNOWLEDGE
+  OTHER
+}
+
+enum JobRequirementImportance {
+  REQUIRED
+  PREFERRED
+  OTHER
+}
+
+enum JobRequirementSource {
+  MANUAL
+  JOB_RESPONSIBILITY
+  JOB_QUALIFICATION
+  JOB_PREFERRED_QUALIFICATION
+  JOB_SKILL
+}
+
+enum JobRequirementState {
+  ACTIVE
+  ARCHIVED
+}
+
+enum JobRequirementSupportLevel {
+  FULL
+  PARTIAL
+}
+
+enum JobRequirementMatchStatus {
+  NOT_REVIEWED
+  SUPPORTED
+  PARTIALLY_SUPPORTED
+  UNSUPPORTED
+}
+
+enum JobRequirementMatchEventType {
+  REQUIREMENT_CREATED
+  REQUIREMENT_UPDATED
+  REQUIREMENT_REORDERED
+  REQUIREMENT_ARCHIVED
+  REQUIREMENT_RESTORED
+  EVIDENCE_LINKED
+  EVIDENCE_LINK_UPDATED
+  EVIDENCE_UNLINKED
+  EVIDENCE_VERSION_CHANGED
+  REVIEW_COMPLETED
+}
+
 enum UserStatus {
   ACTIVE
   SUSPENDED
@@ -270,6 +334,10 @@ model User {
   jobScoringProfile           JobScoringProfile?
   jobPreliminaryScores        JobPreliminaryScore[]
   jobScoringEvents            JobScoringEvent[]
+  jobRequirements             JobRequirement[]
+  jobRequirementEvidenceLinks JobRequirementEvidenceLink[]
+  jobRequirementReviews       JobRequirementReview[]
+  jobRequirementMatchEvents   JobRequirementMatchEvent[]
 }
 
 model AuthAccount {
@@ -449,6 +517,7 @@ model EvidenceItem {
   allowedForInterviews        Boolean            @default(false)
   allowedForRecruiterMessages Boolean            @default(false)
   sourceNotes                 String?            @db.Text
+  version                     Int                @default(1)
   createdAt                   DateTime           @default(now())
   updatedAt                   DateTime           @updatedAt
 
@@ -456,6 +525,7 @@ model EvidenceItem {
   sourceExperience Experience? @relation("ExperienceEvidence", fields: [sourceExperienceId, userId], references: [id, userId], onDelete: Restrict)
   sourceProject    Project?    @relation("ProjectEvidence", fields: [sourceProjectId, userId], references: [id, userId], onDelete: Restrict)
   claims           Claim[]
+  requirementLinks JobRequirementEvidenceLink[]
 
   @@unique([id, userId])
   @@index([userId, verificationStatus])
@@ -627,6 +697,8 @@ model Job {
   filterEvents             JobFilterEvent[]
   preliminaryScore         JobPreliminaryScore?
   scoringEvents            JobScoringEvent[]
+  requirements             JobRequirement[]
+  requirementMatchEvents   JobRequirementMatchEvent[]
 
   @@unique([id, userId])
   @@index([userId, status, confirmedAt, id])
@@ -996,4 +1068,102 @@ model JobScoringEvent {
 
   @@index([userId, profileId, createdAt])
   @@index([userId, jobId, createdAt])
+}
+
+model JobRequirement {
+  id              String                   @id @default(cuid())
+  userId          String
+  jobId           String
+  statement       String                   @db.VarChar(1000)
+  category        JobRequirementCategory
+  importance      JobRequirementImportance
+  position        Int
+  version         Int                      @default(1)
+  matchSetVersion Int                      @default(1)
+  source          JobRequirementSource
+  state           JobRequirementState      @default(ACTIVE)
+  archivedAt      DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  user          User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job           Job                          @relation(fields: [jobId, userId], references: [id, userId], onDelete: Cascade)
+  evidenceLinks JobRequirementEvidenceLink[]
+  review        JobRequirementReview?
+  events        JobRequirementMatchEvent[]
+
+  @@unique([id, userId])
+  @@unique([id, jobId, userId])
+  @@index([userId, jobId, state, position, id])
+  @@index([userId, importance, state, updatedAt, id])
+}
+
+model JobRequirementEvidenceLink {
+  id                      String                     @id @default(cuid())
+  userId                  String
+  requirementId           String
+  evidenceItemId          String
+  supportLevel            JobRequirementSupportLevel
+  rationale               String?                    @db.VarChar(500)
+  position                Int
+  version                 Int                        @default(1)
+  reviewedEvidenceVersion Int?
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requirement JobRequirement @relation(fields: [requirementId, userId], references: [id, userId], onDelete: Cascade)
+  evidence    EvidenceItem   @relation(fields: [evidenceItemId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([id, userId])
+  @@unique([requirementId, evidenceItemId])
+  @@index([userId, requirementId, position, id])
+  @@index([userId, evidenceItemId, requirementId])
+}
+
+model JobRequirementReview {
+  id                      String                    @id @default(cuid())
+  userId                  String
+  requirementId           String
+  status                  JobRequirementMatchStatus
+  reviewedRequirementVersion Int
+  reviewedMatchSetVersion Int
+  matchSchemaVersion      Int
+  linkSetHash             String                    @db.Char(64)
+  version                 Int                       @default(1)
+  reviewedAt              DateTime                  @default(now())
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  requirement JobRequirement @relation(fields: [requirementId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([id, userId])
+  @@unique([requirementId, userId])
+  @@index([userId, status, reviewedAt, id])
+}
+
+model JobRequirementMatchEvent {
+  id                 String                       @id @default(cuid())
+  userId             String
+  jobId              String
+  requirementId      String
+  eventType          JobRequirementMatchEventType
+  actorUserId        String?
+  requirementVersion Int
+  matchSetVersion    Int
+  evidenceItemId     String?
+  evidenceVersion    Int?
+  supportLevel       JobRequirementSupportLevel?
+  reviewStatus       JobRequirementMatchStatus?
+  safeMetadata       Json
+  createdAt          DateTime                     @default(now())
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job         Job            @relation(fields: [jobId, userId], references: [id, userId], onDelete: Cascade)
+  requirement JobRequirement @relation(fields: [requirementId, jobId, userId], references: [id, jobId, userId], onDelete: Cascade)
+
+  @@index([userId, jobId, createdAt])
+  @@index([userId, requirementId, createdAt])
+  @@index([userId, eventType, createdAt])
 }

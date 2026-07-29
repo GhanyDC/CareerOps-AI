@@ -73,6 +73,18 @@ CareerOps may prepare, review, and track applications, but it must never automat
 - Lifecycle refresh belongs in the same serializable transaction as confirmation, authoritative field edits, selected-field reparses, and restore. Archive retains the last score without refresh.
 - Profile scans are explicit, version-bound, and limited to 50 active Jobs per page. Do not introduce a worker or scheduler.
 
+## Requirement-to-Evidence Matching rules
+
+- Requirements are atomic, authoritative only after explicit user confirmation, and independent for every authoritative Job and duplicate member.
+- Never silently convert Job prose, parser output, or structured Job arrays into requirement records. Structured Job-field provenance requires an exact current field value.
+- Derive `NOT_REVIEWED`, `SUPPORTED`, `PARTIALLY_SUPPORTED`, and `UNSUPPORTED` from explicit review completion and full/partial links. `UNSUPPORTED` means only that no supporting Candidate Evidence is currently recorded.
+- Keep freshness separate from status. Requirement meaning, semantic link-set, match schema, and linked Candidate Evidence versions are freshness coordinates; ordering and unrelated Job edits are not.
+- Keep requirement/evidence links user-scoped in application logic and composite database foreign keys. Never copy evidence narratives into links, reviews, events, audits, summaries, or cursors.
+- Evidence edits preserve links and stale affected reviews. Evidence deletion follows the Candidate Evidence deletion contract, removes links transactionally, and preserves only safe compact metadata.
+- Archive preserves requirements, links, reviews, and events while excluding archived Jobs from active summaries. Restore reuses existing state without inventing links.
+- Coverage is factual supported, partial, unsupported, not-reviewed, stale, and total counts separated by importance. It is never a fit or qualification score.
+- Primary-collapsed summaries may project only the explicit active duplicate primary and must retain an include-members option. Never copy or consolidate member matches.
+
 ## Required checks
 
 Before work is complete, run the checks appropriate to the change, including:
@@ -100,9 +112,11 @@ selection are also implemented. Versioned Job Hard Filter profiles, deterministi
 evaluations, compact events, bounded scans, and primary-collapsed consideration projections are
 implemented. Versioned Preliminary Job Scoring profiles, deterministic current scores, coverage,
 compact events, bounded scans, and primary-collapsed ranking projections are implemented in the
-current working slice. Application tracking, requirement-to-evidence matching, RAG/vector
-retrieval, additional authentication providers, PostgreSQL RLS, n8n runtime integration, job
-scraping, and autonomous agent workflows remain deferred. They are possible later CareerOps
-capabilities and are not permanently prohibited.
+current working slice. Atomic user-confirmed Job requirements, explicit Candidate Evidence links,
+derived reviews, freshness, compact events, and primary-collapsed factual coverage are implemented
+in the Requirement-to-Evidence Matching slice. Application tracking, RAG/vector retrieval,
+additional authentication providers, PostgreSQL RLS, n8n runtime integration, job scraping, and
+autonomous agent workflows remain deferred. They are possible later CareerOps capabilities and are
+not permanently prohibited.
 
 Do not begin a deferred capability without a separately reviewed increment. Preserve unrelated user changes and never commit real secrets, generated Prisma output, build output, test reports, or local environment files.

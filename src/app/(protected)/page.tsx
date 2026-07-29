@@ -57,6 +57,23 @@ export default async function Dashboard() {
       summary.jobScoring.staleOrMissing,
       "/jobs?view=CONSIDERATION&sort=SCORE_DESC",
     ],
+    ["Required: supported", summary.requirementMatching.REQUIRED.supported, "/jobs/requirements"],
+    [
+      "Required: partial",
+      summary.requirementMatching.REQUIRED.partiallySupported,
+      "/jobs/requirements",
+    ],
+    [
+      "Required: unsupported",
+      summary.requirementMatching.REQUIRED.unsupported,
+      "/jobs/requirements",
+    ],
+    [
+      "Required: not reviewed",
+      summary.requirementMatching.REQUIRED.notReviewed,
+      "/jobs/requirements",
+    ],
+    ["Required: stale", summary.requirementMatching.REQUIRED.stale, "/jobs/requirements"],
   ] as const;
 
   return (

@@ -119,11 +119,15 @@ positive versions, bounded JSON, explanation/outcome agreement, and actor owners
 
 ## Explicit exclusions and separate scoring
 
-The Hard Filter module adds no scoring, severity, weights, ranking, requirement-to-evidence matching, Candidate
-Evidence retrieval, RAG, embeddings, vector search, LLM call, resume or cover-letter tailoring,
+The Hard Filter module adds no scoring, severity, weights, ranking, Candidate Evidence retrieval,
+RAG, embeddings, vector search, LLM call, resume or cover-letter tailoring,
 application tracking or submission, scraping, URL fetching, enrichment, salary benchmarking,
 external API, n8n runtime, worker, scheduler, or autonomous workflow.
 
 The separately documented [Preliminary Job Scoring](preliminary-job-scoring.md) module consumes
 authoritative structured Job data but remains distinct from these binary/tri-state hard
 constraints. A hard-filter result is never reinterpreted as a score or automatic Job mutation.
+The separately documented
+[Requirement-to-Evidence Matching](requirement-evidence-matching.md) module records factual support
+for explicitly confirmed atomic requirements. A Hard Filter result never becomes a match status,
+and a requirement match never changes Hard Filter eligibility.
