@@ -69,6 +69,7 @@ export function listEvidenceForRequirement(userId: string, requirementId: string
   return prisma.evidenceItem.findMany({
     where: {
       userId,
+      state: "ACTIVE",
       requirementLinks: { none: { requirementId } },
     },
     select: {

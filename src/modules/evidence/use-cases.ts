@@ -10,6 +10,7 @@ import {
 import {
   canTransitionEvidence,
   evidenceInputSchema,
+  evidenceStateTransitionSchema,
   evidenceTransitionSchema,
   type EvidenceInput,
   type EvidenceVerificationStatus,
@@ -56,6 +57,9 @@ export async function updateEvidenceItem(userId: string, id: string, untrustedIn
   return runSerializableTransaction(async (tx) => {
     const evidence = await tx.evidenceItem.findUnique({ where: { id_userId: { id, userId } } });
     if (!evidence) throw new DomainError("Evidence item not found.");
+    if (evidence.state === "ARCHIVED") {
+      throw new DomainError("Archived Evidence is read-only. Restore it before editing.");
+    }
     if (evidence.verificationStatus === "VERIFIED") {
       throw new DomainError(
         "Verified evidence is locked. Revoke verification before changing the evidence item.",
@@ -106,6 +110,9 @@ export async function transitionEvidenceStatus(
   return runSerializableTransaction(async (tx) => {
     const evidence = await tx.evidenceItem.findUnique({ where: { id_userId: { id, userId } } });
     if (!evidence) throw new DomainError("Evidence item not found.");
+    if (evidence.state === "ARCHIVED") {
+      throw new DomainError("Archived Evidence is read-only. Restore it before changing status.");
+    }
 
     if (!canTransitionEvidence(evidence.verificationStatus, targetStatus)) {
       throw new DomainError(
@@ -174,6 +181,54 @@ export async function transitionEvidenceStatus(
       }
     }
 
+    return updated;
+  });
+}
+
+export async function transitionEvidenceState(
+  userId: string,
+  id: string,
+  untrustedInput: unknown,
+  dependencies: {
+    recordAudit: (...arguments_: Parameters<typeof recordAudit>) => PromiseLike<unknown>;
+  } = { recordAudit },
+) {
+  const input = evidenceStateTransitionSchema.parse(untrustedInput);
+  return runSerializableTransaction(async (tx) => {
+    const evidence = await tx.evidenceItem.findUnique({
+      where: { id_userId: { id, userId } },
+    });
+    if (!evidence) throw new DomainError("Evidence item not found.");
+    if (evidence.version !== input.expectedVersion) {
+      throw new DomainError("Evidence changed. Refresh and try again.", "VERSION_CONFLICT");
+    }
+    if (evidence.state === input.targetState) {
+      throw new DomainError(`Evidence is already ${input.targetState.toLowerCase()}.`);
+    }
+
+    const updated = await tx.evidenceItem.update({
+      where: { id_userId: { id, userId } },
+      data: {
+        state: input.targetState,
+        archivedAt: input.targetState === "ARCHIVED" ? new Date() : null,
+        version: { increment: 1 },
+      },
+    });
+    await recordEvidenceVersionChangeInTransaction(
+      tx,
+      userId,
+      id,
+      evidence.version,
+      updated.version,
+    );
+    await dependencies.recordAudit(tx, {
+      userId,
+      entityType: "EVIDENCE",
+      entityId: id,
+      action: input.targetState === "ARCHIVED" ? "EVIDENCE_ARCHIVED" : "EVIDENCE_RESTORED",
+      previousState: { state: evidence.state, version: evidence.version },
+      newState: { state: updated.state, version: updated.version },
+    });
     return updated;
   });
 }

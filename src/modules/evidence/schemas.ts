@@ -59,6 +59,11 @@ export const evidenceTransitionSchema = z.object({
   targetStatus: z.enum(verificationStatuses),
 });
 
+export const evidenceStateTransitionSchema = z.object({
+  targetState: z.enum(["ACTIVE", "ARCHIVED"]),
+  expectedVersion: z.coerce.number().int().positive(),
+});
+
 export type EvidenceInput = z.infer<typeof evidenceInputSchema>;
 export type EvidenceVerificationStatus = (typeof verificationStatuses)[number];
 

@@ -9,6 +9,7 @@ export type EvidenceFilters = Readonly<{
   sourceType?: "EXPERIENCE" | "PROJECT";
   verificationStatus?: "DRAFT" | "REQUIRES_VERIFICATION" | "VERIFIED" | "REJECTED";
   evidenceStrength?: "DIRECT" | "TRANSFERABLE" | "SUPPORTING" | "WEAK";
+  state?: "ACTIVE" | "ARCHIVED";
   query?: string;
 }>;
 
@@ -18,6 +19,7 @@ export function listEvidenceItems(userId: string, filters: EvidenceFilters = {})
     sourceType: filters.sourceType,
     verificationStatus: filters.verificationStatus,
     evidenceStrength: filters.evidenceStrength,
+    state: filters.state,
   };
 
   if (filters.query) {
@@ -34,6 +36,7 @@ export function listEvidenceItems(userId: string, filters: EvidenceFilters = {})
       sourceExperience: { select: { id: true, title: true, organization: true } },
       sourceProject: { select: { id: true, name: true } },
       _count: { select: { claims: true } },
+      retrievalIndex: true,
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -41,7 +44,7 @@ export function listEvidenceItems(userId: string, filters: EvidenceFilters = {})
 
 export function listVerifiedEvidenceOptions(userId: string) {
   return prisma.evidenceItem.findMany({
-    where: { userId, verificationStatus: "VERIFIED" },
+    where: { userId, state: "ACTIVE", verificationStatus: "VERIFIED" },
     select: { id: true, claim: true },
     orderBy: { updatedAt: "desc" },
   });
@@ -54,6 +57,7 @@ export function getEvidenceItem(userId: string, id: string) {
       sourceExperience: { select: { id: true, title: true, organization: true } },
       sourceProject: { select: { id: true, name: true } },
       _count: { select: { claims: true } },
+      retrievalIndex: true,
     },
   });
 }

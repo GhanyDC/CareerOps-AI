@@ -25,7 +25,9 @@ export async function viewClaim(userId: string, id: string) {
 async function assertOwnedEvidence(userId: string, evidenceItemId?: string) {
   if (!evidenceItemId) return;
   const evidence = await findOwnedEvidence(userId, evidenceItemId);
-  if (!evidence) throw new DomainError("The linked evidence item is unavailable.");
+  if (!evidence || evidence.state !== "ACTIVE") {
+    throw new DomainError("The linked evidence item is unavailable.");
+  }
 }
 
 export async function createDraftClaim(userId: string, untrustedInput: unknown) {
@@ -58,7 +60,7 @@ export async function transitionClaimStatus(userId: string, id: string, untruste
   return runSerializableTransaction(async (tx) => {
     const claim = await tx.claim.findUnique({
       where: { id_userId: { id, userId } },
-      include: { evidenceItem: { select: { verificationStatus: true } } },
+      include: { evidenceItem: { select: { verificationStatus: true, state: true } } },
     });
     if (!claim) throw new DomainError("Claim not found.");
 
@@ -68,7 +70,8 @@ export async function transitionClaimStatus(userId: string, id: string, untruste
 
     if (
       targetStatus === "APPROVED" &&
-      !canApproveClaim(claim.status, claim.evidenceItem?.verificationStatus)
+      (claim.evidenceItem?.state !== "ACTIVE" ||
+        !canApproveClaim(claim.status, claim.evidenceItem?.verificationStatus))
     ) {
       throw new DomainError("Only claims linked to verified evidence can be approved.");
     }
