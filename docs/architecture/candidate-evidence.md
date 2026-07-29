@@ -20,6 +20,7 @@ src/modules/experiences        experience validation, CRUD, conservative deletio
 src/modules/projects           project validation, CRUD, conservative deletion
 src/modules/evidence           source validation, filtering, verification transitions
 src/modules/claims             draft editing and controlled claim transitions
+src/modules/retrieval          canonical derivatives, indexing, hybrid retrieval, citations
 src/modules/audit              compact transition-history persistence
 src/modules/dashboard          user-scoped aggregate counts
 ```
@@ -58,8 +59,23 @@ compact events/audits retain only IDs, post-mutation versions, support level, an
 evidence-deleted reason. See
 [Requirement-to-Evidence Matching](requirement-evidence-matching.md).
 
+## Retrieval lifecycle
+
+Every Evidence record has one derived retrieval-index state. Creation is independent of provider
+availability and starts `PENDING`. Every authoritative Evidence mutation advances the existing
+version; a database trigger deletes the obsolete derived chunks and makes the index `STALE`.
+Manual indexing builds a deterministic safe document and replaces the current chunk set
+atomically after any external embedding call has completed.
+
+Evidence now has an explicit audited `ACTIVE`/`ARCHIVED` lifecycle. Archive preserves the
+authoritative record, claims, requirement links, reviews, and audits, makes it read-only, removes
+derived chunks through version staleness, and excludes it from active retrieval. Restore preserves
+the same authority and remains stale until reindexed. Existing claim dependencies continue to
+block deletion; when deletion is allowed, composite cascading foreign keys remove all vectors and
+index state. See [Grounded RAG Retrieval](grounded-rag.md).
+
 ## Deferred integrations
 
-This system now supports explicit Job requirement matching. Grounded RAG retrieval, fit
-explanation, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages
-remain deferred. Automatic application submission is prohibited.
+This system now supports explicit Job requirement matching and grounded retrieval. Fit explanation,
+evidence-gap analysis, resume tailoring, interview preparation, and reviewed ChatGPT Work export
+packages remain deferred. Automatic application submission is prohibited.

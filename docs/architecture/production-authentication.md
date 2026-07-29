@@ -43,12 +43,19 @@ Provider tokens may exist transiently in server memory during the OAuth callback
 - Route handlers must explicitly resolve request context unless they are the public auth protocol handler or health endpoint.
 - Repositories and use cases retain trusted-user scoping and composite ownership constraints.
 - Cross-user records remain unavailable rather than distinguishable.
+- Retrieval index reads, indexing actions, lexical and semantic queries, diagnostics, cursors, and
+  citation navigation all derive the same trusted internal user. Semantic SQL materializes that
+  tenant's eligible current chunks before distance ranking.
 
 `AUTH_TRUSTED_ORIGINS` is the only trusted-origin configuration. CareerOps rejects every non-empty value of Better Auth's separately read `BETTER_AUTH_TRUSTED_ORIGINS` variable, preventing an unvalidated secondary allowlist from widening authentication endpoints. An empty value contributes no origins.
 
 ## Audit and account lifecycle
 
 Authentication audit records contain only internal user/account/session identifiers, an action, provider name, a bounded reason code, and a timestamp. They cannot contain tokens, cookies, provider subjects, emails, raw OAuth claims, payloads, or headers.
+
+Grounded Retrieval credentials are also server-only. Embedding-provider keys never enter auth
+configuration, browser bundles, cookies, audit metadata, compact retrieval events, or provider
+response storage. Retrieval events store a query hash rather than query text.
 
 Provisioning, session creation, session success, and database session-revocation audits are transactionally coupled through PostgreSQL triggers. User-status events are coupled to their administrative transaction. The UI-level `SIGN_OUT` descriptor is written after the authoritative session deletion; if that secondary write fails, logout remains effective and the transactional `SESSION_REVOKED` event remains durable.
 

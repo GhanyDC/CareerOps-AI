@@ -142,6 +142,11 @@ contract: claims still block deletion; otherwise matching links are removed tran
 match-set versions advance before compact unlink events and audits preserve only safe IDs,
 post-mutation versions, support levels, and a fixed deletion reason.
 
+An explicit Evidence archive preserves links and makes affected completed reviews stale while the
+record is excluded from active review completion and retrieval. Restore preserves those links and
+does not invent support. Review completion requires active Evidence at both the use-case and
+PostgreSQL boundaries.
+
 Full evidence content, source notes, private narratives, and provenance are never copied into links,
 reviews, events, audits, coverage JSON, or cursors.
 
@@ -168,14 +173,16 @@ events and audits omit statements, evidence narratives, descriptions, contacts, 
 instructions, Discovery/parser payloads, and provenance blobs. User-directed Candidate Evidence
 browsing shows a bounded recent list and does not perform matching or suggestion.
 
-## Explicit exclusions and future relationship
+## Grounded Retrieval integration and future relationship
 
-This increment adds no RAG, embedding, vector search, fuzzy or semantic matching, synonym or keyword
-suggestion engine, LLM call, automatic claim, qualification prediction, fit score, tailoring,
-application tracking, submission, scraping, URL fetching, enrichment, external API, worker,
-scheduler, or n8n runtime behavior. Hard Filter results and Preliminary Job Scores remain separate
-signals and are displayed independently.
+Grounded Retrieval consumes active explicit links as a separate, authoritative portion of a
+requirement packet. It labels `FULL` and `PARTIAL` distinctly, removes them from the suggestion
+list, and never creates or changes a link. Lexical, semantic, and hybrid suggestions are not
+confirmed matches. Archived Evidence is absent from both portions until restored.
 
-A later Grounded RAG and Fit Explanation increment may retrieve these reviewed links as structured
-grounding. It must preserve requirement authority, evidence authorization, review freshness, and
-the distinction between recorded support and qualification.
+The retrieval increment adds no LLM answer, automatic claim, qualification prediction, fit score,
+tailoring, application tracking, submission, scraping, URL fetching, enrichment, LLM reranking,
+worker, scheduler, or n8n runtime behavior. Hard Filter results, Preliminary Job Scores,
+requirement coverage, and retrieval ranks remain separate signals. A later Fit Explanation
+increment must preserve requirement authority, evidence authorization, review freshness, citation
+coordinates, and the distinction between recorded support, retrieval relevance, and qualification.

@@ -85,6 +85,24 @@ CareerOps may prepare, review, and track applications, but it must never automat
 - Coverage is factual supported, partial, unsupported, not-reviewed, stale, and total counts separated by importance. It is never a fit or qualification score.
 - Primary-collapsed summaries may project only the explicit active duplicate primary and must retain an include-members option. Never copy or consolidate member matches.
 
+## Grounded Retrieval rules
+
+- Candidate Evidence is the only retrieval corpus. Canonical documents and chunks are derived,
+  non-authoritative data and must contain only the reviewed safe field catalog.
+- Preserve deterministic canonicalization, bounded structure-aware chunking, exact version/hash
+  citations, and separate lexical/semantic freshness coordinates.
+- Derive every retrieval owner from trusted server request context. Tenant predicates and composite
+  ownership must apply before vector ranking; citation navigation must repeat authorization.
+- Keep explicit `FULL` and `PARTIAL` links separate from lexical/semantic discoveries. Retrieval
+  must never create a link, claim, qualification result, fit score, or application mutation.
+- Store no raw query, Evidence narrative, snippet, vector, provider response, secret, or database
+  URL in events or logs. Compact events are limited to hashes, counts, buckets, fixed codes, and
+  provider coordinates.
+- Indexing is manual and synchronously bounded to 10 Evidence records per page. Do not add a worker,
+  queue, scheduler, LLM reranker, answer generator, or live-provider call in automated tests.
+- Use the provider-neutral server-only interface. The deterministic hash provider is test-only and
+  must never be described as production semantic quality.
+
 ## Required checks
 
 Before work is complete, run the checks appropriate to the change, including:
@@ -114,9 +132,12 @@ implemented. Versioned Preliminary Job Scoring profiles, deterministic current s
 compact events, bounded scans, and primary-collapsed ranking projections are implemented in the
 current working slice. Atomic user-confirmed Job requirements, explicit Candidate Evidence links,
 derived reviews, freshness, compact events, and primary-collapsed factual coverage are implemented
-in the Requirement-to-Evidence Matching slice. Application tracking, RAG/vector retrieval,
-additional authentication providers, PostgreSQL RLS, n8n runtime integration, job scraping, and
-autonomous agent workflows remain deferred. They are possible later CareerOps capabilities and are
-not permanently prohibited.
+in the Requirement-to-Evidence Matching slice. Deterministic Candidate Evidence canonicalization,
+bounded chunks, pgvector storage, lexical/semantic/hybrid retrieval, explicit-link integration,
+exact-version citations, manual indexing, compact diagnostics, and synthetic evaluation are
+implemented in the Grounded Retrieval slice. Fit explanation and evidence-gap generation,
+application tracking, additional authentication providers, PostgreSQL RLS, n8n runtime
+integration, job scraping, and autonomous agent workflows remain deferred. They are possible
+later CareerOps capabilities and are not permanently prohibited.
 
 Do not begin a deferred capability without a separately reviewed increment. Preserve unrelated user changes and never commit real secrets, generated Prisma output, build output, test reports, or local environment files.

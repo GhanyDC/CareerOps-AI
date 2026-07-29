@@ -31,6 +31,12 @@ freshness, compact audits/events, and factual required/preferred coverage counts
 qualification or create another score. See
 [Requirement-to-Evidence Matching architecture](docs/architecture/requirement-evidence-matching.md).
 
+Grounded Retrieval adds deterministic canonical Candidate Evidence documents, PostgreSQL lexical
+and vector search, explicit-link-aware hybrid ranking, exact-version citations, freshness, bounded
+manual indexing, and compact diagnostics. It retrieves grounding only; it does not generate a fit
+conclusion or application claim. See the
+[Grounded RAG architecture](docs/architecture/grounded-rag.md).
+
 ## Operating model
 
 - ChatGPT Work discovers opportunities, performs contextual analysis, and drafts application materials.
@@ -63,7 +69,7 @@ Product logic belongs in modules and use cases, not React components or route ha
 
 - Node.js 24 LTS
 - npm 11 or later
-- Docker with Docker Compose
+- Docker with Docker Compose (the pinned service image includes PostgreSQL 17 and pgvector)
 
 Use the pinned Node version with `nvm use`.
 
@@ -115,6 +121,10 @@ npm run db:studio
 
 Use Prisma migrations, never `prisma db push`, for project schema changes. The development seed is idempotent and preserves edits by creating missing records without overwriting existing records. See [seed-data documentation](docs/seed-data.md).
 
+Compose and CI pin `pgvector/pgvector:0.8.5-pg17-bookworm`. Production PostgreSQL must support the
+`vector` extension and allow the migration role to create it. See the
+[Grounded Retrieval operations guide](docs/operations/grounded-retrieval.md).
+
 ## Candidate evidence concepts
 
 - **Candidate profile:** one per user; optional facts, preferences, constraints, and goals.
@@ -122,6 +132,8 @@ Use Prisma migrations, never `prisma db push`, for project schema changes. The d
 - **Evidence item:** one atomic claim linked to exactly one owned experience or project.
 - **Evidence verification:** `Draft`, `Requires verification`, `Verified`, or `Rejected`.
 - **Evidence strength:** `Direct`, `Transferable`, `Supporting`, or `Weak`.
+- **Evidence lifecycle:** `Active` or explicitly `Archived`; archived Evidence is preserved,
+  read-only, and excluded from active retrieval until restored and reindexed.
 - **Claim-bank item:** controlled wording marked `Draft`, `Requires verification`, `Approved`, `Prohibited`, or `Archived`.
 - **Job requirement:** one user-confirmed atomic requirement with explicit category, importance,
   provenance classification, and independent version.
@@ -155,11 +167,18 @@ npm run test:integration
 npm run build
 npm run test:e2e
 npm run test:e2e:production
+npm run eval:retrieval
 npm run verify
 npm run verify:release
 ```
 
-Integration tests require the healthy Compose database. Test users are isolated and removed after each suite. E2E uses Chromium against the production build on dedicated port 3100. A separate test-only Better Auth instance creates database sessions and injects HttpOnly cookies into Playwright; it exposes no HTTP bypass and makes no live Google calls. Each test creates uniquely identified users and removes only those users and their owned test data.
+Integration tests require the healthy Compose database. Test users are isolated and removed after
+each suite. E2E uses Chromium against the production build on ports 3100 and 3101. The first uses a
+deterministic test-only embedding provider; the second proves lexical fallback with semantic
+retrieval disabled. A separate test-only Better Auth instance creates database sessions and
+injects HttpOnly cookies into Playwright; it exposes no HTTP bypass and makes no live Google or
+OpenAI calls. Each test creates uniquely identified users and removes only those users and their
+owned test data.
 
 GitHub Actions performs clean installation, migration deployment, seed, quality checks, unit/integration tests, production build, and the full Chromium evidence-to-approved-claim workflow.
 
@@ -175,16 +194,19 @@ Automated tests do not contact Google. Complete the [manual Google OAuth smoke t
 - **Seeded development user unavailable:** run `npm run db:seed`, then explicitly link the provider subject if that local data should be used through Google.
 - **Prisma client unavailable:** run `npm run db:generate`.
 - **Database authentication changed:** existing Docker volumes retain their bootstrap credentials. Recreate a local volume only when deleting its data is intentional.
-- **E2E cannot start:** run `npm run build`, confirm port 3100 is available, and ensure Chromium is installed. E2E does not require live Google credentials.
+- **E2E cannot start:** run `npm run build`, confirm ports 3100 and 3101 are available, and ensure Chromium is installed. E2E does not require live provider credentials.
+- **Vector migration fails:** confirm the target supports pgvector and the migration role may
+  create the `vector` extension; do not bypass the migration with `db push`.
 
 ## Deferred product phases
 
-This evidence system now supports explicit Job requirement matching. Grounded RAG retrieval, fit
-explanation, resume tailoring, interview preparation, and reviewed ChatGPT Work export packages
-remain deferred to separately reviewed increments. Additional authentication providers, n8n
-runtime integration, application tracking, scraping, and agent workflows also remain deferred. Job
-Hard Filters are deterministic eligibility constraints and remain separate from preliminary
-preference scoring and factual requirement coverage.
+This evidence system now supports explicit Job requirement matching and grounded Candidate
+Evidence retrieval. Fit explanation, evidence-gap analysis, resume tailoring, interview
+preparation, and reviewed ChatGPT Work export packages remain deferred to separately reviewed
+increments. Additional authentication providers, n8n runtime integration, application tracking,
+scraping, and agent workflows also remain deferred. Job Hard Filters are deterministic eligibility
+constraints and remain separate from preliminary preference scoring, factual requirement
+coverage, and retrieval rank.
 
 Automatic job-application submission remains prohibited. Scraping and application tracking remain
 deferred.
