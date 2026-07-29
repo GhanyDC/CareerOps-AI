@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import {
   createEvidenceItem,
   deleteEvidenceItem,
+  transitionEvidenceState,
   transitionEvidenceStatus,
   updateEvidenceItem,
 } from "./use-cases";
@@ -103,4 +104,25 @@ export async function deleteEvidenceAction(
   });
   if (state.status === "error") return state;
   redirect("/evidence?deleted=1");
+}
+
+export async function transitionEvidenceStateAction(
+  _previousState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = readString(formData, "id");
+  const state = await executeServerMutation("evidence.state.transition", async () => {
+    const { userId } = await getMutationRequestContext();
+    if (!id) throw new Error("Missing evidence identifier");
+    await transitionEvidenceState(userId, id, {
+      targetState: readString(formData, "targetState"),
+      expectedVersion: readString(formData, "expectedVersion"),
+    });
+    revalidatePath("/");
+    revalidatePath("/evidence");
+    revalidatePath(`/evidence/${id}`);
+    revalidatePath("/retrieval");
+  });
+  if (state.status === "error") return state;
+  redirect(`/evidence/${id}?stateChanged=1`);
 }

@@ -669,6 +669,21 @@ details .raw-content {
   overflow-wrap: anywhere;
 }
 
+.citation-coordinate {
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.72rem;
+}
+
+.retrieval-result-card {
+  border-inline-start: 0.3rem solid var(--accent);
+}
+
+.retrieval-results {
+  gap: 1.75rem;
+}
+
 .parse-review-grid > aside {
   position: sticky;
   top: 6rem;

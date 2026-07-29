@@ -453,7 +453,11 @@ export async function createRequirementEvidenceLink(
     const evidence = await tx.evidenceItem.findUnique({
       where: { id_userId: { id: input.evidenceItemId, userId } },
     });
-    if (!evidence || evidence.version !== input.expectedEvidenceVersion) {
+    if (
+      !evidence ||
+      evidence.state !== "ACTIVE" ||
+      evidence.version !== input.expectedEvidenceVersion
+    ) {
       throw new DomainError(
         "The selected Candidate Evidence is unavailable or changed. Reload and try again.",
         "VERSION_CONFLICT",
@@ -667,7 +671,7 @@ export async function completeRequirementReview(
         job: true,
         review: true,
         evidenceLinks: {
-          include: { evidence: { select: { id: true, version: true } } },
+          include: { evidence: { select: { id: true, version: true, state: true } } },
           orderBy: [{ position: "asc" }, { id: "asc" }],
         },
       },
@@ -699,6 +703,12 @@ export async function completeRequirementReview(
       throw new DomainError(
         "Candidate Evidence changed while the review was open. Reload and review the current records.",
         "VERSION_CONFLICT",
+      );
+    }
+    if (requirement.evidenceLinks.some((link) => link.evidence.state !== "ACTIVE")) {
+      throw new DomainError(
+        "Archived Candidate Evidence cannot complete an active requirement review.",
+        "CONFLICT",
       );
     }
     const linkSetHash = hashRequirementLinkSet(requirement.evidenceLinks);

@@ -24,7 +24,7 @@ jobs:
       DEVELOPMENT_USER_KEY: careerops-ci-development
     services:
       postgres:
-        image: postgres:17.10-alpine3.24
+        image: pgvector/pgvector:0.8.5-pg17-bookworm
         env:
           POSTGRES_DB: careerops_ci
           POSTGRES_USER: careerops

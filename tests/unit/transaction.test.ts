@@ -66,4 +66,44 @@ describe("serializable transaction retries", () => {
     expect(callback).toHaveBeenCalledOnce();
     expect(execute).toHaveBeenCalledOnce();
   });
+
+  it("retries a driver-adapter transaction write conflict", async () => {
+    const callback = vi.fn(async () => "ok");
+    let attempt = 0;
+    const execute = vi.fn(async (operation: (tx: Prisma.TransactionClient) => Promise<string>) => {
+      attempt += 1;
+      if (attempt === 1) {
+        throw Object.assign(new Error("Transaction failed due to a write conflict or a deadlock"), {
+          cause: { kind: "TransactionWriteConflict" },
+        });
+      }
+      return operation(transactionClient);
+    });
+
+    await expect(runSerializableTransaction(callback, execute)).resolves.toBe("ok");
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(callback).toHaveBeenCalledOnce();
+  });
+
+  it("retries raw PostgreSQL serialization and deadlock codes", async () => {
+    for (const databaseCode of ["40001", "40P01"]) {
+      const callback = vi.fn(async () => "ok");
+      let attempt = 0;
+      const execute = vi.fn(
+        async (operation: (tx: Prisma.TransactionClient) => Promise<string>) => {
+          attempt += 1;
+          if (attempt === 1) {
+            throw Object.assign(new Error("Raw query failed"), {
+              code: "P2010",
+              meta: { code: databaseCode },
+            });
+          }
+          return operation(transactionClient);
+        },
+      );
+
+      await expect(runSerializableTransaction(callback, execute)).resolves.toBe("ok");
+      expect(execute).toHaveBeenCalledTimes(2);
+    }
+  });
 });

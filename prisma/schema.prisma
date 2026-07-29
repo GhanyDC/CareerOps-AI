@@ -37,6 +37,11 @@ enum EvidenceStrength {
   WEAK
 }
 
+enum EvidenceState {
+  ACTIVE
+  ARCHIVED
+}
+
 enum ClaimStatus {
   DRAFT
   REQUIRES_VERIFICATION
@@ -63,6 +68,8 @@ enum AuditAction {
   EVIDENCE_REJECTED
   EVIDENCE_REQUIRES_VERIFICATION
   EVIDENCE_VERIFICATION_REVOKED
+  EVIDENCE_ARCHIVED
+  EVIDENCE_RESTORED
   CLAIM_APPROVED
   CLAIM_REQUIRES_VERIFICATION
   CLAIM_PROHIBITED
@@ -275,6 +282,33 @@ enum JobRequirementMatchEventType {
   REVIEW_COMPLETED
 }
 
+enum EvidenceRetrievalIndexStatus {
+  PENDING
+  CURRENT
+  STALE
+  FAILED
+  DISABLED
+}
+
+enum EvidenceRetrievalMode {
+  REQUIREMENT
+  JOB
+  USER_QUERY
+}
+
+enum EvidenceRetrievalDurationBucket {
+  LT_100_MS
+  LT_500_MS
+  LT_2_S
+  GTE_2_S
+}
+
+enum EvidenceRetrievalResultCode {
+  RESULTS
+  EMPTY
+  SEMANTIC_UNAVAILABLE
+}
+
 enum UserStatus {
   ACTIVE
   SUSPENDED
@@ -338,6 +372,9 @@ model User {
   jobRequirementEvidenceLinks JobRequirementEvidenceLink[]
   jobRequirementReviews       JobRequirementReview[]
   jobRequirementMatchEvents   JobRequirementMatchEvent[]
+  evidenceRetrievalIndexes    EvidenceRetrievalIndex[]
+  evidenceRetrievalChunks     EvidenceRetrievalChunk[]
+  evidenceRetrievalEvents     EvidenceRetrievalEvent[]
 }
 
 model AuthAccount {
@@ -517,17 +554,22 @@ model EvidenceItem {
   allowedForInterviews        Boolean            @default(false)
   allowedForRecruiterMessages Boolean            @default(false)
   sourceNotes                 String?            @db.Text
+  state                       EvidenceState      @default(ACTIVE)
+  archivedAt                  DateTime?
   version                     Int                @default(1)
   createdAt                   DateTime           @default(now())
   updatedAt                   DateTime           @updatedAt
 
-  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceExperience Experience? @relation("ExperienceEvidence", fields: [sourceExperienceId, userId], references: [id, userId], onDelete: Restrict)
-  sourceProject    Project?    @relation("ProjectEvidence", fields: [sourceProjectId, userId], references: [id, userId], onDelete: Restrict)
+  user             User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceExperience Experience?                  @relation("ExperienceEvidence", fields: [sourceExperienceId, userId], references: [id, userId], onDelete: Restrict)
+  sourceProject    Project?                     @relation("ProjectEvidence", fields: [sourceProjectId, userId], references: [id, userId], onDelete: Restrict)
   claims           Claim[]
   requirementLinks JobRequirementEvidenceLink[]
+  retrievalIndex   EvidenceRetrievalIndex?
+  retrievalChunks  EvidenceRetrievalChunk[]
 
   @@unique([id, userId])
+  @@index([userId, state, updatedAt, id])
   @@index([userId, verificationStatus])
   @@index([userId, evidenceStrength])
   @@index([sourceExperienceId])
@@ -1122,18 +1164,18 @@ model JobRequirementEvidenceLink {
 }
 
 model JobRequirementReview {
-  id                      String                    @id @default(cuid())
-  userId                  String
-  requirementId           String
-  status                  JobRequirementMatchStatus
+  id                         String                    @id @default(cuid())
+  userId                     String
+  requirementId              String
+  status                     JobRequirementMatchStatus
   reviewedRequirementVersion Int
-  reviewedMatchSetVersion Int
-  matchSchemaVersion      Int
-  linkSetHash             String                    @db.Char(64)
-  version                 Int                       @default(1)
-  reviewedAt              DateTime                  @default(now())
-  createdAt               DateTime                  @default(now())
-  updatedAt               DateTime                  @updatedAt
+  reviewedMatchSetVersion    Int
+  matchSchemaVersion         Int
+  linkSetHash                String                    @db.Char(64)
+  version                    Int                       @default(1)
+  reviewedAt                 DateTime                  @default(now())
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
 
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   requirement JobRequirement @relation(fields: [requirementId, userId], references: [id, userId], onDelete: Cascade)
@@ -1166,4 +1208,79 @@ model JobRequirementMatchEvent {
   @@index([userId, jobId, createdAt])
   @@index([userId, requirementId, createdAt])
   @@index([userId, eventType, createdAt])
+}
+
+model EvidenceRetrievalIndex {
+  id                     String                       @id @default(cuid())
+  userId                 String
+  evidenceItemId         String
+  indexedEvidenceVersion Int?
+  canonicalContentHash   String?                      @db.Char(64)
+  chunkingSchemaVersion  Int                          @default(1)
+  retrievalSchemaVersion Int                          @default(1)
+  embeddingProvider      String?                      @db.VarChar(80)
+  embeddingModel         String?                      @db.VarChar(160)
+  embeddingDimensions    Int?
+  lexicalCurrent         Boolean                      @default(false)
+  semanticCurrent        Boolean                      @default(false)
+  status                 EvidenceRetrievalIndexStatus @default(PENDING)
+  chunkCount             Int                          @default(0)
+  lastIndexedAt          DateTime?
+  errorCode              String?                      @db.VarChar(80)
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  evidenceItem EvidenceItem @relation(fields: [evidenceItemId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([evidenceItemId, userId])
+  @@unique([id, userId])
+  @@index([userId, status, updatedAt, evidenceItemId])
+  @@index([userId, lexicalCurrent, updatedAt, evidenceItemId])
+  @@index([userId, semanticCurrent, embeddingProvider, embeddingModel, embeddingDimensions])
+}
+
+model EvidenceRetrievalChunk {
+  id                  String                 @id
+  userId              String
+  evidenceItemId      String
+  evidenceVersion     Int
+  chunkIndex          Int
+  section             String                 @db.VarChar(80)
+  chunkText           String                 @db.VarChar(2000)
+  chunkHash           String                 @db.Char(64)
+  characterCount      Int
+  embeddingDimensions Int?
+  embedding           Unsupported("vector")?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  evidenceItem EvidenceItem @relation(fields: [evidenceItemId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([evidenceItemId, evidenceVersion, chunkIndex])
+  @@unique([id, userId])
+  @@index([userId, evidenceItemId, evidenceVersion, chunkIndex])
+  @@index([userId, embeddingDimensions, evidenceItemId])
+}
+
+model EvidenceRetrievalEvent {
+  id                String                          @id @default(cuid())
+  userId            String
+  queryHash         String                          @db.Char(64)
+  mode              EvidenceRetrievalMode
+  requestedTopK     Int
+  returnedCount     Int
+  currentIndexCount Int
+  staleIndexCount   Int
+  durationBucket    EvidenceRetrievalDurationBucket
+  resultCode        EvidenceRetrievalResultCode
+  embeddingProvider String?                         @db.VarChar(80)
+  embeddingModel    String?                         @db.VarChar(160)
+  createdAt         DateTime                        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt, id])
+  @@index([userId, mode, resultCode, createdAt])
 }
