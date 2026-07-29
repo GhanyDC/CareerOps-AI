@@ -33,6 +33,7 @@ export default async function ProtectedLayout({ children }: Readonly<{ children:
           <Link href="/jobs/duplicates">Duplicate Review</Link>
           <Link href="/jobs/filters">Job Filters</Link>
           <Link href="/jobs/scoring">Job Scoring</Link>
+          <Link href="/retrieval">Grounded Retrieval</Link>
         </nav>
         <SignOutForm />
       </header>

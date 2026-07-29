@@ -70,7 +70,15 @@ export default async function JobDetailPage({
           <h1>{job.title}</h1>
           <p>{job.companyName ?? "Company not provided"}</p>
         </div>
-        <StatusBadge value={job.status} />
+        <div className="page-stack">
+          <StatusBadge value={job.status} />
+          {job.status === "ACTIVE" &&
+          requirementMatching.requirements.some((requirement) => requirement.state === "ACTIVE") ? (
+            <Link className="button secondary" href={`/retrieval?jobId=${job.id}`}>
+              Retrieve for this Job
+            </Link>
+          ) : null}
+        </div>
       </div>
       {query.confirmed ? (
         <div className="notice success">

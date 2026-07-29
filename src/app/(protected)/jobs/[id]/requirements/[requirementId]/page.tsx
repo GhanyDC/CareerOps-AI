@@ -72,6 +72,13 @@ export default async function RequirementMatchPage({
         Matches show which Candidate Evidence records support a Job requirement. They do not
         independently prove qualification or guarantee application success.
       </div>
+      {!readOnly ? (
+        <div className="button-row">
+          <Link className="button primary" href={`/retrieval?requirementId=${requirement.id}`}>
+            Find grounded Candidate Evidence
+          </Link>
+        </div>
+      ) : null}
       {query.saved ? <div className="notice success">Requirement updated.</div> : null}
       {query.linked ? <div className="notice success">Candidate Evidence linked.</div> : null}
       {query.linkUpdated ? <div className="notice success">Evidence link updated.</div> : null}

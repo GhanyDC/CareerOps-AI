@@ -21,6 +21,7 @@ export default async function EvidencePage({
   const sourceTypeValue = one(query.sourceType);
   const verificationValue = one(query.verificationStatus);
   const strengthValue = one(query.evidenceStrength);
+  const stateValue = one(query.state);
   const filters: EvidenceFilters = {
     sourceType:
       sourceTypeValue === "EXPERIENCE" || sourceTypeValue === "PROJECT"
@@ -28,6 +29,7 @@ export default async function EvidencePage({
         : undefined,
     verificationStatus: verificationStatuses.find((status) => status === verificationValue),
     evidenceStrength: evidenceStrengths.find((strength) => strength === strengthValue),
+    state: stateValue === "ACTIVE" || stateValue === "ARCHIVED" ? stateValue : undefined,
     query: one(query.query)?.trim() || undefined,
   };
   const evidenceItems = await listEvidenceItems(userId, filters);
@@ -60,6 +62,11 @@ export default async function EvidencePage({
               {humanizeEnum(status)}
             </option>
           ))}
+        </select>
+        <select name="state" defaultValue={filters.state ?? ""} aria-label="Evidence state">
+          <option value="">All Evidence states</option>
+          <option value="ACTIVE">Active</option>
+          <option value="ARCHIVED">Archived</option>
         </select>
         <select
           name="evidenceStrength"
@@ -102,12 +109,18 @@ export default async function EvidencePage({
                   <span className="record-kicker">{source}</span>
                   <h2>{evidence.claim}</h2>
                 </div>
-                <StatusBadge value={evidence.verificationStatus} />
+                <div className="tag-row">
+                  <StatusBadge value={evidence.state} />
+                  <StatusBadge value={evidence.verificationStatus} />
+                </div>
               </div>
               <div className="record-meta">
                 <span>{humanizeEnum(evidence.evidenceStrength)}</span>
                 <span>{allowed.join(" · ") || "No external usage allowed"}</span>
                 <span>{evidence._count.claims} linked claims</span>
+                <span>
+                  Retrieval {humanizeEnum(evidence.retrievalIndex?.status ?? "NOT_INDEXED")}
+                </span>
               </div>
             </Link>
           );
