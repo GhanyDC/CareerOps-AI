@@ -383,11 +383,17 @@ test("creates, reviews, stales, preserves, and projects requirement matches", as
     });
     page.once("dialog", (dialog) => dialog.accept());
     await page.getByRole("button", { name: "Archive Job" }).click();
+    await expect(page).toHaveURL(new RegExp(`/jobs/${job.id}\\?transitioned=ARCHIVED$`), {
+      timeout: 15_000,
+    });
     await expect(page.getByText(/Requirements and matches are preserved/)).toBeVisible();
     expect(
       await authTestClient.jobRequirement.count({ where: { userId: user.id, jobId: job.id } }),
     ).toBe(requirementCount);
     await page.getByRole("button", { name: "Restore Job" }).click();
+    await expect(page).toHaveURL(new RegExp(`/jobs/${job.id}\\?transitioned=ACTIVE$`), {
+      timeout: 15_000,
+    });
     await expect(page.getByRole("button", { name: "Archive Job" })).toBeVisible();
 
     await page.getByRole("button", { name: "Sign out" }).click();
